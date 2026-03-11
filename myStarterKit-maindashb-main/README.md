@@ -196,6 +196,8 @@ Endpoints:
 
 All mutating methods return `405 method_not_allowed`.
 
+Artifact root is configurable via `DASHBOARD_ARTIFACTS_ROOT`; if unset, the API also accepts `INTEGRATION_ARTIFACTS_ROOT` as a fallback for integration deployments.
+
 
 #### Dashboard security defaults and deployment posture
 

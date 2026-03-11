@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -119,7 +120,9 @@ class DashboardApiHandler(BaseHTTPRequestHandler):
                 return
 
             self._send_json(404, {"error": "not_found"})
-        except Exception:
+        except Exception as exc:
+            print(f"dashboard api error: {exc.__class__.__name__}: {exc}")
+            traceback.print_exc()
             self._send_json(500, {"error": "internal_error"})
 
     def do_POST(self) -> None:  # noqa: N802
@@ -195,7 +198,7 @@ def create_server(*, host: str = "127.0.0.1", port: int = 8080, repo_root: str |
     """Build a configured HTTP server instance for the dashboard API."""
 
     resolved_repo_root = Path(repo_root)
-    resolved_artifacts_root = artifacts_root or os.environ.get("DASHBOARD_ARTIFACTS_ROOT", "artifacts/logs")
+    resolved_artifacts_root = artifacts_root or os.environ.get("DASHBOARD_ARTIFACTS_ROOT") or os.environ.get("INTEGRATION_ARTIFACTS_ROOT", "artifacts/logs")
     resolved_host = _resolve_dashboard_host(host)
     service = DashboardService(resolved_repo_root, artifacts_root=resolved_artifacts_root)
 
@@ -208,7 +211,7 @@ def create_server(*, host: str = "127.0.0.1", port: int = 8080, repo_root: str |
 
 
 def main() -> None:
-    artifacts_root = os.environ.get("DASHBOARD_ARTIFACTS_ROOT", "artifacts/logs")
+    artifacts_root = os.environ.get("DASHBOARD_ARTIFACTS_ROOT") or os.environ.get("INTEGRATION_ARTIFACTS_ROOT", "artifacts/logs")
     host = _resolve_dashboard_host(None)
     server = create_server(host=host, artifacts_root=artifacts_root)
     print(_dashboard_security_banner(host=host, artifacts_root=artifacts_root))

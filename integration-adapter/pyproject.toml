@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "integration-adapter"
+version = "0.1.0"
+description = "Non-invasive artifact adapter between Onyx runtime and AI Trust starter-kit governance plane"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

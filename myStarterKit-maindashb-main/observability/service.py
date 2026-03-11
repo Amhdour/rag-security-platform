@@ -42,6 +42,7 @@ class DashboardService:
         explanations = self._build_trace_explanations()
         connected = self._summarize_trace_connections(explanations, eval_runs=evals, launch_gate=launch_gate, verification=verification)
         integrity = self._artifact_integrity_overview(replay=replay, evals=evals, launch_gate=launch_gate, verification=verification)
+        empty_state = self._build_empty_state(traces=traces, replay=replay, evals=evals, launch_gate=launch_gate)
         return {
             "counts": {
                 "traces": len(traces),
@@ -90,6 +91,7 @@ class DashboardService:
             "read_only": True,
             "demo_mode": self.paths.demo_mode,
             "artifacts_root": self.paths.relative(self.paths.artifacts_root),
+            "empty_state": empty_state,
         }
 
     def list_traces(self, filters: Mapping[str, str] | None = None) -> list[dict[str, object]]:
@@ -257,6 +259,38 @@ class DashboardService:
             "artifacts_root": self.paths.relative(self.paths.artifacts_root),
             "demo_mode": self.paths.demo_mode,
         }
+
+
+    def _build_empty_state(
+        self,
+        *,
+        traces: Sequence[Mapping[str, object]],
+        replay: Sequence[Mapping[str, object]],
+        evals: Sequence[Mapping[str, object]],
+        launch_gate: Mapping[str, object] | None,
+    ) -> dict[str, object]:
+        """Describe actionable empty-state guidance for dashboard users."""
+
+        has_any_artifacts = bool(traces) or bool(replay) or bool(evals) or bool(launch_gate)
+        if has_any_artifacts:
+            return {"present": False, "message": ""}
+
+        artifacts_root = self.paths.relative(self.paths.artifacts_root)
+        return {
+            "present": True,
+            "title": "No runtime artifacts found",
+            "message": "Dashboard is read-only and currently has no audit/replay/eval/launch-gate artifacts to display.",
+            "artifacts_root": artifacts_root,
+            "suggested_commands": [
+                "python scripts/generate_dashboard_demo_artifacts.py",
+                "DASHBOARD_ARTIFACTS_ROOT=artifacts/demo/dashboard_logs python -m observability.api",
+            ],
+            "notes": [
+                "For integration deployments, point DASHBOARD_ARTIFACTS_ROOT (or INTEGRATION_ARTIFACTS_ROOT) to generated artifacts.",
+                "Demo artifacts are for review workflows only and are not production evidence.",
+            ],
+        }
+
 
 
     def _trace_cross_links(

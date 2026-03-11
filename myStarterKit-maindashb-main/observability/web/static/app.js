@@ -216,6 +216,7 @@ function renderOverview() {
     <div class="panel">
       <h2>Overview</h2>
       <p class="muted">Read-only operational dashboard for runtime evidence. This UI does not execute tools, mutate policies, or alter enforcement.</p>
+      ${renderGlobalEmptyState(overview?.empty_state || null)}
     </div>
     <div class="grid">
       ${metricCard("Traces", overview?.counts?.traces ?? state.traces.length)}
@@ -250,6 +251,26 @@ function renderOverview() {
         <li>Telemetry emits auditable and replay-friendly events.</li>
         <li>Evals and launch-gate artifacts drive readiness outputs.</li>
       </ol>
+    </div>
+  `;
+}
+
+function renderGlobalEmptyState(emptyState) {
+  if (!emptyState || !emptyState.present) return "";
+  const commands = Array.isArray(emptyState.suggested_commands)
+    ? emptyState.suggested_commands.map((item) => `<li><code>${escapeHtml(String(item))}</code></li>`).join("")
+    : "";
+  const notes = Array.isArray(emptyState.notes)
+    ? emptyState.notes.map((item) => `<li>${escapeHtml(String(item))}</li>`).join("")
+    : "";
+
+  return `
+    <div class="panel warning">
+      <h3>${escapeHtml(emptyState.title || "No artifacts")}</h3>
+      <p>${escapeHtml(emptyState.message || "No artifacts available.")}</p>
+      <p><strong>Artifacts root:</strong> <code>${escapeHtml(emptyState.artifacts_root || "artifacts/logs")}</code></p>
+      ${commands ? `<p><strong>Try this demo workflow:</strong></p><ol>${commands}</ol>` : ""}
+      ${notes ? `<ul>${notes}</ul>` : ""}
     </div>
   `;
 }

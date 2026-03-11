@@ -1,0 +1,47 @@
+from integration_adapter.schemas import NormalizedAuditEvent
+
+
+def test_schema_validation_accepts_required_vocabulary() -> None:
+    event = NormalizedAuditEvent(
+        event_id="evt-1",
+        trace_id="trace-1",
+        request_id="req-1",
+        event_type="request.start",
+        actor_id="actor-1",
+        tenant_id="tenant-a",
+        event_payload={"k": "v"},
+    )
+    payload = event.to_dict()
+    assert payload["event_type"] == "request.start"
+
+
+def test_schema_validation_rejects_unknown_event_type() -> None:
+    event = NormalizedAuditEvent(
+        event_id="evt-1",
+        trace_id="trace-1",
+        request_id="req-1",
+        event_type="something.else",
+        actor_id="actor-1",
+        tenant_id="tenant-a",
+        event_payload={},
+    )
+    try:
+        event.to_dict()
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "unsupported event_type" in str(exc)
+
+
+def test_schema_validation_accepts_error_event_and_audit_context() -> None:
+    event = NormalizedAuditEvent(
+        event_id="evt-err",
+        trace_id="trace-err",
+        request_id="req-err",
+        event_type="error.event",
+        actor_id="actor-err",
+        tenant_id="tenant-a",
+        event_payload={"message": "boom"},
+    )
+    payload = event.to_dict()
+    assert payload["session_id"] == "adapter-session"
+    assert payload["actor_type"] == "assistant_runtime"
