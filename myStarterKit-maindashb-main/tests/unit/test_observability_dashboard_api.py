@@ -210,6 +210,26 @@ def test_dashboard_service_handles_missing_artifacts(tmp_path: Path) -> None:
 
 
 
+
+
+def test_dashboard_service_overview_includes_actionable_empty_state(tmp_path: Path) -> None:
+    service = DashboardService(tmp_path)
+    overview = service.get_overview()
+
+    empty_state = overview.get("empty_state", {})
+    assert empty_state.get("present") is True
+    assert "No runtime artifacts found" in str(empty_state.get("title", ""))
+    commands = empty_state.get("suggested_commands", [])
+    assert any("generate_dashboard_demo_artifacts.py" in str(cmd) for cmd in commands)
+
+
+def test_dashboard_service_overview_hides_empty_state_when_artifacts_exist(tmp_path: Path) -> None:
+    _seed_artifacts(tmp_path)
+    service = DashboardService(tmp_path)
+    overview = service.get_overview()
+    empty_state = overview.get("empty_state", {})
+    assert empty_state.get("present") is False
+
 def test_dashboard_service_trace_filtering_and_sorting_security_workflows(tmp_path: Path) -> None:
     _seed_artifacts(tmp_path)
     service = DashboardService(tmp_path)
@@ -315,6 +335,54 @@ def test_dashboard_http_endpoints_and_error_handling(tmp_path: Path) -> None:
             assert False, "expected HTTP 404"
         except urllib.error.HTTPError as exc:
             assert exc.code == 404
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+def test_create_server_uses_integration_artifacts_root_env_when_dashboard_env_missing(tmp_path: Path, monkeypatch) -> None:
+    integration_root = tmp_path / "integration-artifacts"
+    (integration_root / "replay").mkdir(parents=True, exist_ok=True)
+    (integration_root / "evals").mkdir(parents=True, exist_ok=True)
+    (integration_root / "launch_gate").mkdir(parents=True, exist_ok=True)
+    (integration_root / "audit.jsonl").write_text("")
+    (tmp_path / "observability/web/static").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "observability/web/index.html").write_text("ok")
+    (tmp_path / "observability/web/static/app.js").write_text("ok")
+
+    monkeypatch.delenv("DASHBOARD_ARTIFACTS_ROOT", raising=False)
+    monkeypatch.setenv("INTEGRATION_ARTIFACTS_ROOT", str(integration_root))
+
+    server = create_server(host="127.0.0.1", port=0, repo_root=tmp_path)
+    try:
+        service = server.RequestHandlerClass.service
+        assert service is not None
+        assert service.paths.artifacts_root == integration_root
+    finally:
+        server.server_close()
+
+
+def test_dashboard_api_returns_500_when_service_raises(tmp_path: Path, monkeypatch) -> None:
+    _seed_artifacts(tmp_path)
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(DashboardService, "list_traces", _boom)
+
+    server = create_server(host="127.0.0.1", port=0, repo_root=tmp_path)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+
+    try:
+        try:
+            urllib.request.urlopen(f"http://{host}:{port}/api/traces")  # noqa: S310
+            assert False, "expected HTTP 500"
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 500
+            payload = json.loads(exc.read().decode("utf-8"))
+            assert payload["error"] == "internal_error"
     finally:
         server.shutdown()
         server.server_close()

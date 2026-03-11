@@ -12,6 +12,8 @@ def main() -> None:
     path = generate_demo_artifacts()
     print(f"DEMO MODE artifacts written to: {path}")
     print("Use only for local learning. Do not treat as production evidence.")
+    print("Start dashboard in demo mode with:")
+    print("DASHBOARD_ARTIFACTS_ROOT=artifacts/demo/dashboard_logs python -m observability.api")
 
 
 if __name__ == "__main__":
