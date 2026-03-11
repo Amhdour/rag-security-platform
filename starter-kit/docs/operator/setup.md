@@ -1,0 +1,92 @@
+# Operator & Developer Setup Guide
+
+This guide focuses on practical local setup and validation for the starter kit.
+
+## 1) Environment Setup
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+```
+
+## 2) Minimal Local Config + Validation
+```bash
+cp config/settings.template.yaml config/settings.local.yaml
+cp config/logging.template.yaml config/logging.local.yaml
+mkdir -p artifacts/logs/evals artifacts/logs/replay
+pytest -q
+./scripts/check_scaffold.sh
+```
+
+## 3) Security Eval Run
+```bash
+python -m evals.runner
+```
+Expected outputs:
+- `artifacts/logs/evals/*.jsonl`
+- `artifacts/logs/evals/*.summary.json`
+- `artifacts/logs/replay/*.replay.json`
+
+## 4) Launch Readiness Evaluation
+```bash
+python -m launch_gate.engine
+```
+Interpretation:
+- `go`: all configured checks pass.
+- `conditional_go`: no blockers, but residual risks remain.
+- `no_go`: critical blockers found.
+
+## 5) Optional Audit JSONL Wiring Example
+Use `telemetry.audit.sinks.JsonlAuditSink` in runtime entrypoint wiring to persist events to a file such as:
+- `artifacts/logs/audit.jsonl`
+
+## Operational Notes
+- Treat missing eval/audit/policy artifacts as readiness failures.
+- Keep policy bundles environment-specific and versioned.
+- Do not bypass orchestrator policy checkpoints in runtime integrations.
+
+
+## 6) Quick Demo Walkthrough
+
+### Normal request
+```bash
+python -c "from evals.runtime import build_runtime_fixture, make_request; f=build_runtime_fixture(); r=f.orchestrator.run(make_request(request_id='ops-demo-ok', tenant_id='tenant-a', user_text='help')); print(r.status)"
+```
+
+### Guarded action (denied tool)
+```bash
+python -c "from evals.runtime import build_runtime_fixture, make_invocation; f=build_runtime_fixture(); d=f.tool_router.route(make_invocation(request_id='ops-demo-deny', tenant_id='tenant-a', tool_name='admin_shell', action='exec', arguments={'command':'whoami'})); print(d.status, d.reason)"
+```
+
+### Launch gate summary
+```bash
+python -c "from pathlib import Path; from launch_gate.engine import SecurityLaunchGate; print(SecurityLaunchGate(repo_root=Path('.')).evaluate().summary)"
+```
+
+
+## Secrets handling
+
+- Keep `config/settings.local.yaml` values as `env:...` references for sensitive material.
+- Export required secrets before startup checks: `SUPPORT_AGENT_SIGNING_KEY`, `MCP_CONNECTOR_TOKEN`, `SUPPORT_WEBHOOK_SECRET`.
+- Run `python main.py` to fail fast when required secret refs are missing or insecurely embedded.
+
+
+## 7) Observability Dashboard Hardening Notes
+
+Default secure posture:
+- bind host: `127.0.0.1` (localhost only)
+- mode: read-only artifact inspection
+- mutation endpoints: blocked (`405`)
+- no runtime tool execution or policy mutation in dashboard path
+
+Configuration knobs:
+- `DASHBOARD_ARTIFACTS_ROOT` (default: `artifacts/logs`)
+- `DASHBOARD_HOST` (default: `127.0.0.1`)
+- `DASHBOARD_ALLOW_REMOTE` (default: disabled; required for non-loopback binding)
+
+If remote exposure is required:
+1. Put dashboard behind authenticated reverse proxy (OIDC/SAML/session gateway).
+2. Enforce TLS at proxy boundary.
+3. Restrict network access (allowlisted VPN/admin subnet only).
+4. Keep dashboard process itself non-public and non-internet-routable where possible.
+5. Keep demo artifacts separate (`artifacts/demo/dashboard_logs`) from runtime artifacts.

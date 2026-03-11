@@ -1,0 +1,35 @@
+{
+  "actor_id": "demo-user",
+  "coverage": {
+    "decision_replay_core_complete": true,
+    "request_lifecycle_complete": true
+  },
+  "decision_summary": {
+    "request_lifecycle": {
+      "end_seen": true,
+      "start_seen": true
+    }
+  },
+  "delegation_chain": [],
+  "event_type_counts": {
+    "policy.decision": 2,
+    "request.end": 1,
+    "request.start": 1,
+    "retrieval.decision": 1,
+    "tool.decision": 1
+  },
+  "replay_version": "1",
+  "request_id": "demo-1",
+  "tenant_id": "tenant-a",
+  "timeline": [
+    {
+      "created_at": "2026-01-01T00:00:01+00:00",
+      "event_id": "evt-1",
+      "event_type": "request.start",
+      "payload": {
+        "channel": "web"
+      }
+    }
+  ],
+  "trace_id": "trace-demo-success"
+}

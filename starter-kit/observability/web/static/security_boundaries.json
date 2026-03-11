@@ -1,0 +1,548 @@
+{
+  "crossings": [
+    {
+      "control": "Identity validation + policy-gated orchestration entry flow",
+      "control_locations": [
+        "app/orchestrator.py",
+        "app/context.py",
+        "identity/models.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/replay/*.replay.json"
+      ],
+      "from": "Client / Interface",
+      "to": "App / Orchestrator",
+      "what_can_go_wrong": [
+        "Malformed identity context",
+        "Prompt injection",
+        "Tenant spoofing attempts"
+      ],
+      "what_crosses": [
+        "SupportAgentRequest envelope",
+        "request_id/session metadata",
+        "user_text"
+      ],
+      "boundary_id": "boundary_client_to_orchestrator",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/architecture.md"
+      ],
+      "related_controls": [
+        "identity_context_validation",
+        "request_context_normalization"
+      ]
+    },
+    {
+      "control": "Deny-by-default policy decisions for retrieval/model/tools",
+      "control_locations": [
+        "app/orchestrator.py",
+        "policies/engine.py",
+        "policies/loader.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/audit.jsonl"
+      ],
+      "from": "App / Orchestrator",
+      "to": "Policy Engine",
+      "what_can_go_wrong": [
+        "Missing policy checkpoint",
+        "Unknown action allowed by mistake"
+      ],
+      "what_crosses": [
+        "action strings",
+        "actor identity",
+        "request/stage context"
+      ],
+      "boundary_id": "boundary_orchestrator_to_policy",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/evidence_pack/policy_summary.md"
+      ],
+      "related_controls": [
+        "deny_by_default_policy",
+        "policy_checkpointing"
+      ]
+    },
+    {
+      "control": "Fail-closed retrieval mediation with policy constraints",
+      "control_locations": [
+        "app/orchestrator.py",
+        "retrieval/service.py",
+        "retrieval/contracts.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/replay/*.replay.json"
+      ],
+      "from": "App / Orchestrator",
+      "to": "Retrieval Service",
+      "what_can_go_wrong": [
+        "Cross-tenant retrieval",
+        "Unauthorized source usage"
+      ],
+      "what_crosses": [
+        "RetrievalQuery",
+        "tenant and source constraints",
+        "top_k bounds"
+      ],
+      "boundary_id": "boundary_orchestrator_to_retrieval",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/evidence_pack/retrieval_security_summary.md"
+      ],
+      "related_controls": [
+        "tenant_retrieval_isolation",
+        "top_k_constraint_enforcement"
+      ]
+    },
+    {
+      "control": "Registered-source checks + trust/provenance validation",
+      "control_locations": [
+        "retrieval/service.py",
+        "retrieval/registry.py",
+        "retrieval/contracts.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/evals/*.jsonl"
+      ],
+      "from": "Retrieval Service",
+      "to": "Source Registry / Retriever Backend",
+      "what_can_go_wrong": [
+        "Disabled/unregistered source access",
+        "Missing trust metadata"
+      ],
+      "what_crosses": [
+        "registered source IDs",
+        "document metadata and provenance"
+      ],
+      "boundary_id": "boundary_retrieval_to_source_registry",
+      "relevant_docs": [
+        "docs/integration_boundary_security.md",
+        "docs/trust_boundaries.md"
+      ],
+      "related_controls": [
+        "registered_source_allowlist",
+        "source_status_validation"
+      ]
+    },
+    {
+      "control": "model.generate policy gate before inference",
+      "control_locations": [
+        "app/orchestrator.py",
+        "app/modeling.py",
+        "policies/engine.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/evals/*.jsonl"
+      ],
+      "from": "App / Orchestrator",
+      "to": "Model Adapter",
+      "what_can_go_wrong": [
+        "Unsafe generation",
+        "Disclosure pressure via prompt injection"
+      ],
+      "what_crosses": [
+        "ModelInput with user text",
+        "retrieved context",
+        "trace/session metadata"
+      ],
+      "boundary_id": "boundary_orchestrator_to_model",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/architecture.md"
+      ],
+      "related_controls": [
+        "model_generate_policy_gate"
+      ]
+    },
+    {
+      "control": "SecureToolRouter mediation (allow/deny/require_confirmation)",
+      "control_locations": [
+        "app/orchestrator.py",
+        "tools/router.py",
+        "policies/engine.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/evals/*.jsonl"
+      ],
+      "from": "App / Orchestrator",
+      "to": "Tool Router",
+      "what_can_go_wrong": [
+        "Unauthorized tool use",
+        "Policy bypass attempts",
+        "Missing confirmation"
+      ],
+      "what_crosses": [
+        "ToolInvocation request context",
+        "tool name/action/arguments",
+        "confirmation flag"
+      ],
+      "boundary_id": "boundary_orchestrator_to_tools",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/evidence_pack/tool_authorization_summary.md"
+      ],
+      "related_controls": [
+        "tool_route_policy_gate",
+        "require_confirmation_enforcement"
+      ]
+    },
+    {
+      "control": "Execution guard blocks direct non-mediated invocation",
+      "control_locations": [
+        "tools/router.py",
+        "tools/registry.py",
+        "tools/execution_guard.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/evals/*.jsonl",
+        "artifacts/logs/sandbox/*.json"
+      ],
+      "from": "Tool Router",
+      "to": "Tool Registry / Executors",
+      "what_can_go_wrong": [
+        "Direct executor bypass",
+        "Unsafe high-risk execution path"
+      ],
+      "what_crosses": [
+        "Mediated tool execution decision",
+        "sanitized execution request"
+      ],
+      "boundary_id": "boundary_tool_router_to_executors",
+      "relevant_docs": [
+        "docs/sandbox_isolation_model.md",
+        "docs/evidence_pack/tool_authorization_summary.md"
+      ],
+      "related_controls": [
+        "execution_guard_no_bypass",
+        "high_risk_tool_isolation"
+      ]
+    },
+    {
+      "control": "Typed audit contracts + JSONL sink + replay completeness checks",
+      "control_locations": [
+        "telemetry/audit/contracts.py",
+        "telemetry/audit/events.py",
+        "telemetry/audit/sinks.py",
+        "telemetry/audit/replay.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/replay/*.replay.json"
+      ],
+      "from": "App / Orchestrator",
+      "to": "Telemetry / Audit pipeline",
+      "what_can_go_wrong": [
+        "Missing lifecycle events",
+        "Incomplete replay reconstruction"
+      ],
+      "what_crosses": [
+        "structured audit events",
+        "trace/request/actor/tenant identifiers",
+        "decision metadata"
+      ],
+      "boundary_id": "boundary_orchestrator_to_audit",
+      "relevant_docs": [
+        "docs/evidence_pack/telemetry_audit_summary.md",
+        "docs/trace_normalization_layer.md"
+      ],
+      "related_controls": [
+        "audit_event_contracts",
+        "request_lifecycle_event_coverage"
+      ]
+    },
+    {
+      "control": "Artifact serialization contracts and evidence-path conventions",
+      "control_locations": [
+        "telemetry/audit/sinks.py",
+        "telemetry/audit/replay.py",
+        "evals/runner.py",
+        "verification/runner.py",
+        "launch_gate/engine.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/replay/*.replay.json",
+        "artifacts/logs/evals/*.summary.json",
+        "artifacts/logs/verification/*.summary.json",
+        "artifacts/logs/launch_gate/*.json"
+      ],
+      "from": "Telemetry / Audit pipeline",
+      "to": "Artifact storage",
+      "what_can_go_wrong": [
+        "Malformed artifacts",
+        "Missing expected evidence files"
+      ],
+      "what_crosses": [
+        "audit JSONL",
+        "replay artifacts",
+        "eval outputs",
+        "verification summaries",
+        "launch-gate reports"
+      ],
+      "boundary_id": "boundary_audit_to_storage",
+      "relevant_docs": [
+        "docs/observability_artifact_readers.md",
+        "docs/evidence_pack/README.md"
+      ],
+      "related_controls": [
+        "artifact_serialization_contracts",
+        "artifact_path_conventions"
+      ]
+    },
+    {
+      "control": "Machine-checkable release-readiness checks with blockers/residual risks",
+      "control_locations": [
+        "launch_gate/engine.py",
+        "verification/runner.py"
+      ],
+      "evidence_artifacts": [
+        "artifacts/logs/launch_gate/*.json",
+        "artifacts/logs/verification/*.summary.json"
+      ],
+      "from": "Artifact storage",
+      "to": "Launch Gate",
+      "what_can_go_wrong": [
+        "False readiness claim",
+        "Missing evidence interpreted as pass"
+      ],
+      "what_crosses": [
+        "policy/eval/audit/replay/verification evidence"
+      ],
+      "boundary_id": "boundary_storage_to_launch_gate",
+      "relevant_docs": [
+        "docs/infrastructure_boundaries.md",
+        "docs/evidence_pack/launch_gate_summary.md"
+      ],
+      "related_controls": [
+        "readiness_evidence_validation",
+        "blocker_and_residual_risk_logic"
+      ]
+    }
+  ],
+  "schema_version": "1",
+  "source_docs": [
+    "docs/trust_boundaries.md",
+    "docs/architecture.md",
+    "docs/integration_boundary_security.md",
+    "docs/reviewer_guide.md"
+  ],
+  "zones": [
+    {
+      "component_paths": [
+        "app/models.py",
+        "app/context.py"
+      ],
+      "id": "client-interface",
+      "name": "Client / Interface",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/integration_boundary_security.md"
+      ],
+      "related_controls": [
+        "identity_context_validation",
+        "request_context_normalization"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/audit.jsonl"
+      ]
+    },
+    {
+      "component_paths": [
+        "app/orchestrator.py"
+      ],
+      "id": "app-orchestrator",
+      "name": "App / Orchestrator",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/architecture.md"
+      ],
+      "related_controls": [
+        "policy_checkpointing",
+        "deny_by_default_orchestration"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/replay/*.replay.json"
+      ]
+    },
+    {
+      "component_paths": [
+        "policies/engine.py",
+        "policies/loader.py",
+        "policies/schema.py"
+      ],
+      "id": "policy-engine",
+      "name": "Policy Engine",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/evidence_pack/policy_summary.md"
+      ],
+      "related_controls": [
+        "deny_by_default_policy",
+        "unknown_action_block"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "policies/bundles/default/policy.json"
+      ]
+    },
+    {
+      "component_paths": [
+        "retrieval/service.py"
+      ],
+      "id": "retrieval-service",
+      "name": "Retrieval Service",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/evidence_pack/retrieval_security_summary.md"
+      ],
+      "related_controls": [
+        "tenant_retrieval_isolation",
+        "allowed_source_enforcement"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/replay/*.replay.json"
+      ]
+    },
+    {
+      "component_paths": [
+        "retrieval/registry.py",
+        "retrieval/contracts.py"
+      ],
+      "id": "source-registry",
+      "name": "Source Registry / Retriever Backend",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/integration_boundary_security.md"
+      ],
+      "related_controls": [
+        "source_registration_validation",
+        "source_trust_metadata_checks"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/evals/*.jsonl"
+      ]
+    },
+    {
+      "component_paths": [
+        "app/modeling.py"
+      ],
+      "id": "model-adapter",
+      "name": "Model Adapter",
+      "relevant_docs": [
+        "docs/trust_boundaries.md"
+      ],
+      "related_controls": [
+        "model_generate_policy_gate"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/audit.jsonl"
+      ]
+    },
+    {
+      "component_paths": [
+        "tools/router.py"
+      ],
+      "id": "tool-router",
+      "name": "Tool Router",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/evidence_pack/tool_authorization_summary.md"
+      ],
+      "related_controls": [
+        "tool_route_policy_gate",
+        "require_confirmation_guardrail"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/evals/*.jsonl"
+      ]
+    },
+    {
+      "component_paths": [
+        "tools/registry.py",
+        "tools/execution_guard.py",
+        "tools/sandbox.py"
+      ],
+      "id": "tool-registry",
+      "name": "Tool Registry / Executors",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/sandbox_isolation_model.md"
+      ],
+      "related_controls": [
+        "tool_execution_guard",
+        "high_risk_tool_isolation"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/evals/*.jsonl",
+        "artifacts/logs/sandbox/*.json"
+      ]
+    },
+    {
+      "component_paths": [
+        "telemetry/audit/contracts.py",
+        "telemetry/audit/events.py",
+        "telemetry/audit/sinks.py",
+        "telemetry/audit/replay.py"
+      ],
+      "id": "telemetry-audit",
+      "name": "Telemetry / Audit pipeline",
+      "relevant_docs": [
+        "docs/trust_boundaries.md",
+        "docs/evidence_pack/telemetry_audit_summary.md"
+      ],
+      "related_controls": [
+        "audit_event_contracts",
+        "replay_completeness_validation"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/audit.jsonl",
+        "artifacts/logs/replay/*.replay.json"
+      ]
+    },
+    {
+      "component_paths": [
+        "artifacts/logs/"
+      ],
+      "id": "artifact-storage",
+      "name": "Artifact storage",
+      "relevant_docs": [
+        "docs/evidence_pack/README.md",
+        "docs/observability_artifact_readers.md"
+      ],
+      "related_controls": [
+        "artifact_schema_validation",
+        "evidence_path_conventions"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/"
+      ]
+    },
+    {
+      "component_paths": [
+        "launch_gate/engine.py"
+      ],
+      "id": "launch-gate",
+      "name": "Launch Gate",
+      "relevant_docs": [
+        "docs/evidence_pack/launch_gate_summary.md",
+        "docs/infrastructure_boundaries.md"
+      ],
+      "related_controls": [
+        "release_readiness_blockers",
+        "residual_risk_classification"
+      ],
+      "related_evidence_artifacts": [
+        "artifacts/logs/launch_gate/*.json",
+        "artifacts/logs/verification/*.summary.json"
+      ]
+    }
+  ]
+}

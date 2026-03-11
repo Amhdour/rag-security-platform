@@ -1,0 +1,14 @@
+{
+  "outcomes": {
+    "blocked": 1,
+    "expected_fail": 0,
+    "fail": 0,
+    "inconclusive": 0,
+    "pass": 3
+  },
+  "passed": true,
+  "passed_count": 4,
+  "suite_name": "security-redteam",
+  "summary": "demo pass=4 fail=0 expected_fail=0 blocked=1 inconclusive=0",
+  "total": 4
+}

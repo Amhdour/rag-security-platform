@@ -1,0 +1,63 @@
+{
+  "blockers": [],
+  "checks": [
+    {
+      "check_name": "mandatory_controls",
+      "details": "present",
+      "evidence": {},
+      "passed": true,
+      "status": "pass"
+    },
+    {
+      "check_name": "policy_artifact",
+      "details": "valid",
+      "evidence": {},
+      "passed": true,
+      "status": "pass"
+    },
+    {
+      "check_name": "telemetry_evidence",
+      "details": "audit records present",
+      "evidence": {},
+      "passed": true,
+      "status": "pass"
+    },
+    {
+      "check_name": "replay_evidence",
+      "details": "replay present",
+      "evidence": {},
+      "passed": true,
+      "status": "pass"
+    },
+    {
+      "check_name": "eval_suite_evidence",
+      "details": "eval summary/jsonl present",
+      "evidence": {},
+      "passed": true,
+      "status": "pass"
+    },
+    {
+      "check_name": "production_deployment_attestation",
+      "details": "demo intentionally omits production attestation",
+      "evidence": {},
+      "passed": false,
+      "status": "missing"
+    }
+  ],
+  "residual_risks": [
+    "demo dataset is illustrative and not production evidence"
+  ],
+  "scorecard": [
+    {
+      "category_name": "telemetry_evidence",
+      "check_names": [
+        "telemetry_evidence"
+      ],
+      "details": "demo audit evidence present",
+      "evidence": {},
+      "status": "pass"
+    }
+  ],
+  "status": "conditional_go",
+  "summary": "status=conditional_go; checks_passed=5/6; blockers=0; residual_risks=1"
+}

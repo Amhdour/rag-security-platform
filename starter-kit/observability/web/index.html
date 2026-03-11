@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Trust & Security Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>AI Trust & Security Dashboard</h1>
+      <p class="subtitle">Read-only runtime explainer backed by audit, replay, eval, and launch-gate artifacts.</p>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button data-view="overview" class="active">Overview</button>
+      <button data-view="traces">Trace Explorer</button>
+      <button data-view="trace-detail">Trace Detail</button>
+      <button data-view="boundary-map">Security Boundaries / Trust Zones</button>
+      <button data-view="evals">Evals</button>
+      <button data-view="launch-gate">Launch Gate</button>
+      <button data-view="replay">Replay Viewer</button>
+    </nav>
+
+    <main id="app">
+      <section id="alerts"></section>
+      <section id="content"></section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
