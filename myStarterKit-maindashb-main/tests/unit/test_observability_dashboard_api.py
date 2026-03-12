@@ -387,3 +387,26 @@ def test_dashboard_api_returns_500_when_service_raises(tmp_path: Path, monkeypat
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_create_server_uses_integration_adapter_artifacts_root_env_when_others_missing(tmp_path: Path, monkeypatch) -> None:
+    integration_root = tmp_path / "adapter-artifacts"
+    (integration_root / "replay").mkdir(parents=True, exist_ok=True)
+    (integration_root / "evals").mkdir(parents=True, exist_ok=True)
+    (integration_root / "launch_gate").mkdir(parents=True, exist_ok=True)
+    (integration_root / "audit.jsonl").write_text("")
+    (tmp_path / "observability/web/static").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "observability/web/index.html").write_text("ok")
+    (tmp_path / "observability/web/static/app.js").write_text("ok")
+
+    monkeypatch.delenv("DASHBOARD_ARTIFACTS_ROOT", raising=False)
+    monkeypatch.delenv("INTEGRATION_ARTIFACTS_ROOT", raising=False)
+    monkeypatch.setenv("INTEGRATION_ADAPTER_ARTIFACTS_ROOT", str(integration_root))
+
+    server = create_server(host="127.0.0.1", port=0, repo_root=tmp_path)
+    try:
+        service = server.RequestHandlerClass.service
+        assert service is not None
+        assert service.paths.artifacts_root == integration_root
+    finally:
+        server.server_close()

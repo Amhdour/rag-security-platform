@@ -284,10 +284,13 @@ class DashboardService:
             "suggested_commands": [
                 "python scripts/generate_dashboard_demo_artifacts.py",
                 "DASHBOARD_ARTIFACTS_ROOT=artifacts/demo/dashboard_logs python -m observability.api",
+                "cd ../integration-adapter && python -m integration_adapter.demo_scenario",
+                "cd ../integration-adapter && INTEGRATION_ADAPTER_ARTIFACTS_ROOT=artifacts/logs python -m integration_adapter.generate_artifacts --demo",
             ],
             "notes": [
-                "For integration deployments, point DASHBOARD_ARTIFACTS_ROOT (or INTEGRATION_ARTIFACTS_ROOT) to generated artifacts.",
+                "For integration deployments, point DASHBOARD_ARTIFACTS_ROOT, INTEGRATION_ADAPTER_ARTIFACTS_ROOT, or INTEGRATION_ARTIFACTS_ROOT to generated artifacts.",
                 "Demo artifacts are for review workflows only and are not production evidence.",
+                "Dashboard remains read-only and does not execute tools or mutate policy/runtime state.",
             ],
         }
 
