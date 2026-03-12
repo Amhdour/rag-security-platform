@@ -18,7 +18,10 @@ class ArtifactPaths:
 
     @classmethod
     def from_root(cls, *, repo_root: Path, artifacts_root: str | Path = "artifacts/logs") -> "ArtifactPaths":
-        return cls(repo_root=repo_root, artifacts_root=repo_root / Path(artifacts_root))
+        resolved_repo = Path(repo_root)
+        root = Path(artifacts_root).expanduser()
+        resolved_artifacts = root if root.is_absolute() else resolved_repo / root
+        return cls(repo_root=resolved_repo, artifacts_root=resolved_artifacts)
 
     @property
     def default_root(self) -> Path:

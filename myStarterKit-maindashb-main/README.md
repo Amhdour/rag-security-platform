@@ -196,7 +196,7 @@ Endpoints:
 
 All mutating methods return `405 method_not_allowed`.
 
-Artifact root is configurable via `DASHBOARD_ARTIFACTS_ROOT`; if unset, the API also accepts `INTEGRATION_ARTIFACTS_ROOT` as a fallback for integration deployments.
+Artifact root is configurable via `DASHBOARD_ARTIFACTS_ROOT`; if unset, the API accepts `INTEGRATION_ADAPTER_ARTIFACTS_ROOT`, then `INTEGRATION_ARTIFACTS_ROOT` as fallbacks for integration deployments.
 
 
 #### Dashboard security defaults and deployment posture
@@ -227,6 +227,15 @@ DASHBOARD_ARTIFACTS_ROOT=artifacts/demo/dashboard_logs python -m observability.a
 ```
 
 In demo mode, the dashboard is explicitly labeled and reads from `artifacts/demo/dashboard_logs` instead of production-like logs.
+
+For integration-adapter generated demo artifacts:
+
+```bash
+cd ../integration-adapter
+python -m integration_adapter.demo_scenario
+cd ../myStarterKit-maindashb-main
+DASHBOARD_ARTIFACTS_ROOT=../integration-adapter/artifacts/logs python -m observability.api
+```
 
 ## Phase 10 Hardening Notes
 

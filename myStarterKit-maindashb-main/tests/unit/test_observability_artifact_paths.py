@@ -13,3 +13,10 @@ def test_artifact_paths_resolve_default_and_demo_modes(tmp_path: Path) -> None:
     paths_demo = ArtifactPaths.from_root(repo_root=tmp_path, artifacts_root="artifacts/demo/dashboard_logs")
     assert paths_demo.replay_dir == tmp_path / "artifacts/demo/dashboard_logs/replay"
     assert paths_demo.demo_mode is True
+
+
+def test_artifact_paths_accept_absolute_artifacts_root(tmp_path: Path) -> None:
+    absolute_root = tmp_path / "external" / "logs"
+    paths = ArtifactPaths.from_root(repo_root=tmp_path, artifacts_root=absolute_root)
+    assert paths.artifacts_root == absolute_root
+    assert paths.audit_jsonl == absolute_root / "audit.jsonl"
