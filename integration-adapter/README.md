@@ -11,7 +11,7 @@
 ## Implementation status (claims audit)
 
 ### Implemented
-- Artifact pipeline commands:
+- **Implemented:** Artifact pipeline commands:
   - `collect_from_onyx`
   - `generate_artifacts`
   - `run_launch_gate`
@@ -38,30 +38,38 @@
 - **Connector inventory exporter**: **Partially Implemented** (real Onyx DB read via `onyx.db.connector.fetch_connectors` when runtime is available; file-backed fallback).
 - **Tool inventory exporter**: **Partially Implemented** (real Onyx DB read via `onyx.db.tools.get_tools` when runtime is available; file-backed fallback).
 - **MCP inventory exporter**: **Partially Implemented** (real Onyx DB read via `onyx.db.mcp.get_all_mcp_servers` with ToolCall-derived usage counts when runtime is available; file-backed fallback).
-- **Eval results exporter**: **Unconfirmed** runtime hook in this workspace (currently file-backed snapshot extraction only).
-- **Runtime events exporter**: **Partially Implemented** (prefers audit JSONL, with ToolCall-derived `tool.execution_attempt` fallback from Onyx DB when runtime is available).
+- **Eval results exporter**: **Partially Implemented** (file-backed snapshot extraction plus runtime config-backed scheduled eval inventory via `onyx.configs.app_configs` when runtime imports are available).
+- **Runtime events exporter**: **Partially Implemented** (prefers audit JSONL, with ChatSession-derived `request.start`/`request.end` and ToolCall-derived `tool.execution_attempt` fallback events from Onyx DB when runtime is available).
 
 > Unconfirmed: canonical runtime hook not validated in this workspace for deployment-wide parity.
 
 
 ## Normalized identity and authorization evidence
 
-Normalized audit events now include identity/authorization evidence fields:
-- `actor_id`
-- `tenant_id`
-- `session_id`
-- `persona_or_agent_id`
-- `tool_invocation_id`
-- `delegation_chain`
-- `decision_basis`
-- `resource_scope`
-- `authz_result`
-- `identity_authz_field_sources` (per-field: `sourced`, `derived`, or `unavailable`)
+**Implemented:** Normalized audit events include identity/authorization evidence fields:
+- **Implemented:** `actor_id`
+- **Implemented:** `tenant_id`
+- **Implemented:** `session_id`
+- **Implemented:** `persona_or_agent_id`
+- **Implemented:** `tool_invocation_id`
+- **Implemented:** `delegation_chain`
+- **Implemented:** `decision_basis`
+- **Implemented:** `resource_scope`
+- **Implemented:** `authz_result`
+- **Implemented:** `identity_authz_field_sources` (per-field: `sourced`, `derived`, or `unavailable`)
 
 Proven vs inferred guidance:
 - **Proven in artifacts:** a field value exists in the normalized artifact and indicates whether it was sourced/derived/unavailable.
 - **Inferred/Derived:** adapter inferred value from adjacent payload semantics (e.g., `resource_scope` from `source_id` or `tool_name`).
 - **Unconfirmed:** canonical runtime hook parity across deployment modes is not established by this workspace alone.
+
+**Partially Implemented:** Best-effort Onyx concept mapping used by adapter:
+- **Partially Implemented:** `session_id` uses `session_id` or Onyx `chat_session_id` when present, else derives from `trace_id`.
+- **Partially Implemented:** `persona_or_agent_id` uses `persona_or_agent_id`, `persona_id`, or `agent_id`.
+- **Partially Implemented:** `tool_invocation_id` uses `tool_invocation_id` or Onyx `tool_call_id`.
+- **Partially Implemented:** `delegation_chain` uses runtime `delegation_chain` when present, else derives from `delegated_by` when available.
+
+**Unconfirmed:** canonical runtime hook not validated in this workspace for all deployment modes.
 
 ## Included modules
 
@@ -84,13 +92,13 @@ Proven vs inferred guidance:
 
 ## Output layout
 
-Generated artifacts are written under:
-- `artifacts/logs/audit.jsonl`
-- `artifacts/logs/replay/*.replay.json`
-- `artifacts/logs/evals/*.jsonl`
-- `artifacts/logs/evals/*.summary.json`
-- `artifacts/logs/launch_gate/*.json`
-- `artifacts/logs/launch_gate/*.md`
+**Implemented:** Generated artifacts are written under:
+- **Implemented:** `artifacts/logs/audit.jsonl`
+- **Implemented:** `artifacts/logs/replay/*.replay.json`
+- **Implemented:** `artifacts/logs/evals/*.jsonl`
+- **Implemented:** `artifacts/logs/evals/*.summary.json`
+- **Implemented:** `artifacts/logs/launch_gate/*.json`
+- **Implemented:** `artifacts/logs/launch_gate/*.md`
 
 ## Quick start
 
@@ -110,10 +118,24 @@ python -m integration_adapter.generate_artifacts
 python -m integration_adapter.run_launch_gate
 ```
 
+Optional path override for reproducible runs:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.generate_artifacts --demo --artifacts-root artifacts/logs
+python -m integration_adapter.run_launch_gate --artifacts-root artifacts/logs
+```
+
 One-command pipeline from repo root:
 
 ```bash
 make evidence
+```
+
+Step-by-step pipeline from repo root:
+
+```bash
+make evidence-step
 ```
 
 Alternative one-command pipeline from adapter directory:
@@ -127,6 +149,12 @@ Force demo mode:
 
 ```bash
 make evidence-demo
+```
+
+Step-by-step demo mode:
+
+```bash
+make evidence-step-demo
 ```
 
 Or:
@@ -147,23 +175,32 @@ Environment overrides:
 ## Launch-gate criteria (evidence-based)
 
 `python -m integration_adapter.run_launch_gate` checks:
-1. connector inventory presence
-2. tool inventory classification quality
-3. MCP inventory classification quality
-4. required audit lifecycle events
-5. eval evidence presence
-6. artifact completeness
-7. critical/high eval failures
-8. artifact schema validity (fail-closed on malformed evidence)
+1. **Implemented:** connector inventory presence
+2. **Implemented:** tool inventory classification quality
+3. **Implemented:** MCP inventory classification quality
+4. **Implemented:** required audit lifecycle events
+5. **Implemented:** eval evidence presence
+6. **Implemented:** artifact completeness
+7. **Implemented:** critical/high eval failures
+8. **Implemented:** artifact schema validity (fail-closed on malformed evidence)
 
 Status semantics:
-- `go`: all checks pass
-- `conditional_go`: no fails and one or more warnings
-- `no_go`: one or more failures
+- **Implemented:** `go` means all checks pass
+- **Implemented:** `conditional_go` means no fails and one or more warnings
+- **Implemented:** `no_go` means one or more failures
+
+Machine-readable output includes:
+- **Implemented:** per-check status and evidence
+- **Implemented:** `blockers` (fail) and `residual_risks` (warn) separated
+- **Implemented:** `evidence_status.present` and `evidence_status.incomplete`
+- **Implemented:** `control_assessment.enforced`, `control_assessment.proven`, `control_assessment.not_proven`
+- **Implemented:** `decision_breakdown.blocker_count` and `decision_breakdown.warning_count`
+
+**Implemented:** Human-readable output (`launch_gate/*.md`) includes the same distinction with explicit **Blockers (fail)** and **Residual risks (warn)** sections.
 
 Limitations:
-- Evaluates evidence presence/quality only.
-- Does **not** independently prove production runtime enforcement.
+- **Implemented:** Evaluates evidence presence/quality only.
+- **Unconfirmed:** Does **not** independently prove production runtime enforcement.
 
 ## End-to-end demo scenario
 
@@ -178,11 +215,11 @@ Or from repo root:
 make demo
 ```
 
-The demo report at `artifacts/logs/demo_scenario.report.json` explicitly labels per-domain and per-story-step `real` vs `synthetic` sources and includes `remaining_realism_gaps` with UNCONFIRMED runtime-hook caveats.
+**Implemented:** The demo report at `artifacts/logs/demo_scenario.report.json` explicitly labels per-domain and per-story-step `real` vs `synthetic` sources and includes `remaining_realism_gaps` with UNCONFIRMED runtime-hook caveats.
 
-See `../docs/demo-scenario.md` for full steps, expected outputs, and realism gaps.
+**Implemented:** See `../docs/demo-scenario.md` for full steps, expected outputs, and realism gaps.
 
 ## Testing notes
 
-- Adapter tests include unit and integration-style coverage.
-- Untestable runtime assumptions are documented in `../docs/testing-blind-spots.md`.
+- **Implemented:** Adapter tests include unit and integration-style coverage.
+- **Unconfirmed:** Untestable runtime assumptions are documented in `../docs/testing-blind-spots.md`.

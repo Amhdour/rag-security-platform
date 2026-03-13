@@ -13,3 +13,7 @@ def test_missing_runtime_fields_are_tolerated_with_defaults() -> None:
     assert event.actor_id == "unknown-actor"
     assert event.persona_or_agent_id == "unavailable"
     assert event.authz_result == "unavailable"
+    payload = event.to_dict()
+    assert payload["identity_authz_field_sources"]["persona_or_agent_id"] == "unavailable"
+    assert payload["identity_authz_field_sources"]["tool_invocation_id"] == "unavailable"
+    assert payload["identity_authz_field_sources"]["resource_scope"] == "unavailable"

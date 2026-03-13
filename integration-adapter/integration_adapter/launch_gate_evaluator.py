@@ -158,6 +158,10 @@ class LaunchGateEvaluator:
             "scorecard": scorecard,
             "blockers": evaluation.blockers,
             "residual_risks": evaluation.residual_risks,
+            "decision_breakdown": {
+                "blocker_count": len(evaluation.blockers),
+                "warning_count": len(evaluation.residual_risks),
+            },
             "evidence_status": {
                 "present": self._evidence_present(evaluation),
                 "incomplete": self._evidence_incomplete(evaluation),
@@ -165,6 +169,7 @@ class LaunchGateEvaluator:
             "control_assessment": {
                 "enforced": False,
                 "proven": False,
+                "not_proven": True,
                 "details": "Control enforcement is not proven by artifact-only checks in this workspace.",
             },
             "limitations": [
@@ -196,11 +201,11 @@ class LaunchGateEvaluator:
         md_lines.extend(
             [
                 "",
-                "## Blockers",
+                "## Blockers (fail)",
                 "",
                 *([f"- {item}" for item in evaluation.blockers] or ["- none"]),
                 "",
-                "## Residual risks",
+                "## Residual risks (warn)",
                 "",
                 *([f"- {item}" for item in evaluation.residual_risks] or ["- none"]),
                 "",

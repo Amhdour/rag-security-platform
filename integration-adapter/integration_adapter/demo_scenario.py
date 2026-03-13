@@ -235,6 +235,54 @@ def _build_story_steps(real_vs_synthetic: dict[str, str]) -> list[dict[str, str]
     ]
 
 
+def _event_type_coverage(rows: list[dict[str, Any]]) -> dict[str, bool]:
+    observed = {
+        str(row.get("event_type", ""))
+        for row in rows
+        if isinstance(row, dict) and row.get("event_type")
+    }
+    return {
+        "request_start": "request.start" in observed,
+        "retrieval_decision": "retrieval.decision" in observed,
+        "tool_decision": "tool.decision" in observed,
+        "mcp_usage": "tool.execution_attempt" in observed,
+        "request_end": "request.end" in observed,
+    }
+
+
+def _build_story_steps_with_coverage(
+    *,
+    real_vs_synthetic: dict[str, str],
+    event_coverage: dict[str, bool],
+) -> list[dict[str, str]]:
+    """Build story-step provenance with event-coverage-aware labeling.
+
+    Unconfirmed: canonical runtime hook not validated in this workspace.
+    """
+
+    runtime_source = real_vs_synthetic["runtime_events"]
+    connectors_source = real_vs_synthetic["connectors"]
+    tools_source = real_vs_synthetic["tools"]
+    mcp_source = real_vs_synthetic["mcp_inventory"]
+    eval_source = real_vs_synthetic["eval_results"]
+
+    request_source = runtime_source if event_coverage["request_start"] else "synthetic"
+    retrieval_source = runtime_source if event_coverage["retrieval_decision"] else connectors_source
+    tool_source = runtime_source if event_coverage["tool_decision"] else tools_source
+    mcp_usage_source = runtime_source if event_coverage["mcp_usage"] else mcp_source
+
+    return [
+        {"step": "request enters runtime context", "source": request_source},
+        {"step": "retrieval touches sources", "source": retrieval_source},
+        {"step": "tool decision is evaluated", "source": tool_source},
+        {"step": "MCP usage is represented", "source": mcp_usage_source},
+        {"step": "eval evidence is generated", "source": eval_source},
+        {"step": "artifacts are written", "source": "implemented"},
+        {"step": "launch gate produces a result", "source": "implemented"},
+        {"step": "dashboard can read artifacts", "source": "implemented"},
+    ]
+
+
 def _remaining_realism_gaps(real_vs_synthetic: dict[str, str]) -> list[str]:
     gaps: list[str] = []
     if real_vs_synthetic["runtime_events"] != "real":
@@ -316,11 +364,17 @@ def run_demo_scenario(config: AdapterConfig | None = None) -> dict[str, Any]:
         "launch_gate_markdown": str(launch_md_path),
     }
 
+    event_coverage = _event_type_coverage(runtime_events)
+
     report = {
         "scenario": "demo_e2e_runtime_to_governance",
         "synthetic_data": any(value == "synthetic" for value in real_vs_synthetic.values()),
         "real_vs_synthetic": real_vs_synthetic,
-        "story_steps": _build_story_steps(real_vs_synthetic),
+        "event_type_coverage": event_coverage,
+        "story_steps": _build_story_steps_with_coverage(
+            real_vs_synthetic=real_vs_synthetic,
+            event_coverage=event_coverage,
+        ),
         "artifacts_root": str(cfg.artifacts_root),
         "outputs": outputs,
         "launch_gate_status": evaluation.status,

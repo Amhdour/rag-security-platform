@@ -56,11 +56,12 @@ def read_audit_jsonl(path: Path) -> tuple[list[dict[str, object]], int]:
     return events, malformed_lines
 
 
-def load_replay_links(repo_root: Path) -> dict[str, dict[str, object]]:
+def load_replay_links(repo_root: Path, *, artifacts_root: Path | None = None) -> dict[str, dict[str, object]]:
     """Build replay lookup keyed by trace_id and request_id where available."""
 
     index: dict[str, dict[str, object]] = {}
-    for path in sorted(repo_root.glob("artifacts/logs/replay/*.replay.json"), reverse=True):
+    replay_dir = (artifacts_root or (repo_root / "artifacts" / "logs")) / "replay"
+    for path in sorted(replay_dir.glob("*.replay.json"), reverse=True):
         payload = _read_replay_payload(path)
         if payload is None:
             continue
@@ -68,7 +69,7 @@ def load_replay_links(repo_root: Path) -> dict[str, dict[str, object]]:
         request_id = str(payload.get("request_id", ""))
         entry = {
             "replay_id": path.name,
-            "replay_path": str(path.relative_to(repo_root)),
+            "replay_path": _display_path(path, repo_root=repo_root),
             "replay_timestamp": _file_timestamp(path),
             "trace_id": trace_id,
             "request_id": request_id,
@@ -213,6 +214,17 @@ def _extract_reason_from_payload(*, event_type: str, payload: Mapping[str, objec
         if isinstance(status, str) and status.strip():
             return f"request status={status.strip()}"
     return ""
+
+
+
+
+def _display_path(path: Path, *, repo_root: Path) -> str:
+    """Return a stable, human-readable path for artifacts across roots."""
+
+    try:
+        return str(path.relative_to(repo_root))
+    except ValueError:
+        return str(path)
 
 
 def _build_explanation_for_group(

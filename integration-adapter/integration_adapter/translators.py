@@ -70,8 +70,12 @@ def translate_retrieval_events(payload: list[dict[str, Any]]) -> list[Normalized
                 {
                     "request_id": record.request_id,
                     "trace_id": record.trace_id,
+                    "session_id": str(row.get("session_id", row.get("chat_session_id", record.trace_id))),
                     "tenant_id": record.tenant_id,
                     "actor_id": record.actor_id,
+                    "persona_or_agent_id": str(
+                        row.get("persona_or_agent_id", row.get("persona_id", row.get("agent_id", "unavailable")))
+                    ),
                     "event_type": "retrieval.decision",
                     "decision_basis": record.reason or "retrieval_policy",
                     "resource_scope": record.source_id,
@@ -116,8 +120,14 @@ def translate_tool_decisions(payload: list[dict[str, Any]]) -> list[NormalizedAu
                 {
                     "request_id": record.request_id,
                     "trace_id": record.trace_id,
+                    "session_id": str(row.get("session_id", row.get("chat_session_id", record.trace_id))),
                     "tenant_id": record.tenant_id,
                     "actor_id": record.actor_id,
+                    "persona_or_agent_id": str(
+                        row.get("persona_or_agent_id", row.get("persona_id", row.get("agent_id", "unavailable")))
+                    ),
+                    "tool_invocation_id": str(row.get("tool_invocation_id", row.get("tool_call_id", "unavailable"))),
+                    "delegation_chain": row.get("delegation_chain", []),
                     "event_type": "tool.decision",
                     "decision_basis": record.reason or "tool_policy",
                     "resource_scope": record.tool_name,
@@ -137,8 +147,14 @@ def translate_tool_decisions(payload: list[dict[str, Any]]) -> list[NormalizedAu
                     {
                         "request_id": record.request_id,
                         "trace_id": record.trace_id,
+                        "session_id": str(row.get("session_id", row.get("chat_session_id", record.trace_id))),
                         "tenant_id": record.tenant_id,
                         "actor_id": record.actor_id,
+                        "persona_or_agent_id": str(
+                            row.get("persona_or_agent_id", row.get("persona_id", row.get("agent_id", "unavailable")))
+                        ),
+                        "tool_invocation_id": str(row.get("tool_invocation_id", row.get("tool_call_id", "unavailable"))),
+                        "delegation_chain": row.get("delegation_chain", []),
                         "event_type": "confirmation.required",
                         "decision_basis": "confirmation_policy",
                         "resource_scope": record.tool_name,
@@ -188,8 +204,14 @@ def translate_mcp_usage(payload: list[dict[str, Any]]) -> list[NormalizedAuditEv
                 {
                     "request_id": record.request_id,
                     "trace_id": record.trace_id,
+                    "session_id": str(row.get("session_id", row.get("chat_session_id", record.trace_id))),
                     "tenant_id": record.tenant_id,
                     "actor_id": record.actor_id,
+                    "persona_or_agent_id": str(
+                        row.get("persona_or_agent_id", row.get("persona_id", row.get("agent_id", "unavailable")))
+                    ),
+                    "tool_invocation_id": str(row.get("tool_invocation_id", row.get("tool_call_id", "unavailable"))),
+                    "delegation_chain": row.get("delegation_chain", []),
                     "event_type": "tool.execution_attempt",
                     "decision_basis": record.reason or "mcp_policy",
                     "resource_scope": f"{record.mcp_server}:{record.tool_name}",

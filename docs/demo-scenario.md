@@ -1,15 +1,15 @@
 # End-to-End Demo Scenario: Runtime to Governance Evidence Flow
 
-This is the reproducible demo scenario for `rag-security-platform-main` that exercises the full integration path:
+**Implemented:** This is the reproducible demo scenario for `rag-security-platform-main` that exercises the full integration path:
 
-1. request enters runtime context
-2. retrieval touches sources
-3. a tool decision is evaluated
-4. MCP usage is represented if available
-5. eval evidence is generated
-6. artifacts are written
-7. launch gate produces a result
-8. dashboard can read the artifacts
+1. **Partially Implemented:** request enters runtime context
+2. **Partially Implemented:** retrieval touches sources
+3. **Partially Implemented:** a tool decision is evaluated
+4. **Partially Implemented:** MCP usage is represented if available
+5. **Implemented:** eval evidence is generated
+6. **Implemented:** artifacts are written
+7. **Implemented:** launch gate produces a result
+8. **Implemented:** dashboard can read the artifacts
 
 ## Status labels used here
 
@@ -57,29 +57,30 @@ python -m integration_adapter.demo_scenario --artifacts-root artifacts/logs
 ## Report fields to inspect
 
 Generated report:
-- `integration-adapter/artifacts/logs/demo_scenario.report.json`
+- **Implemented:** `integration-adapter/artifacts/logs/demo_scenario.report.json`
 
 Key fields:
-- `real_vs_synthetic.*` — per-domain source labels.
-- `story_steps[]` — per-step source label for the target story.
-- `outputs.*` — exact artifact output paths.
-- `launch_gate_status` — go / conditional_go / no_go.
-- `dashboard_read_verification` — parser compatibility status.
-- `remaining_realism_gaps[]` — explicit UNCONFIRMED gaps for this run.
+- **Implemented:** `real_vs_synthetic.*` — per-domain source labels.
+- **Implemented:** `event_type_coverage.*` — whether the demo run observed key runtime event types (`request.start`, `retrieval.decision`, `tool.decision`, `tool.execution_attempt`, `request.end`).
+- **Implemented:** `story_steps[]` — per-step source label for the target story.
+- **Implemented:** `outputs.*` — exact artifact output paths.
+- **Implemented:** `launch_gate_status` — go / conditional_go / no_go.
+- **Implemented:** `dashboard_read_verification` — parser compatibility status.
+- **Implemented:** `remaining_realism_gaps[]` — explicit UNCONFIRMED gaps for this run.
 
 ## Expected outputs
 
 Under `integration-adapter/artifacts/logs/` (or configured root):
-- `audit.jsonl`
-- `connectors.inventory.json`
-- `tools.inventory.json`
-- `mcp_servers.inventory.json`
-- `evals/demo-e2e.jsonl`
-- `evals/demo-e2e.summary.json`
-- `replay/demo-trace-1.replay.json`
-- `launch_gate/security-readiness-<STAMP>.json`
-- `launch_gate/security-readiness-<STAMP>.md`
-- `demo_scenario.report.json`
+- **Implemented:** `audit.jsonl`
+- **Implemented:** `connectors.inventory.json`
+- **Implemented:** `tools.inventory.json`
+- **Implemented:** `mcp_servers.inventory.json`
+- **Implemented:** `evals/demo-e2e.jsonl`
+- **Implemented:** `evals/demo-e2e.summary.json`
+- **Implemented:** `replay/demo-trace-1.replay.json`
+- **Implemented:** `launch_gate/security-readiness-<STAMP>.json`
+- **Implemented:** `launch_gate/security-readiness-<STAMP>.md`
+- **Implemented:** `demo_scenario.report.json`
 
 ## Dashboard verification path
 
@@ -88,7 +89,7 @@ cd myStarterKit-maindashb-main
 DASHBOARD_ARTIFACTS_ROOT=../integration-adapter/artifacts/logs python -m observability.api
 ```
 
-Open `http://127.0.0.1:8080/`.
+**Implemented:** Open `http://127.0.0.1:8080/`.
 
 **Implemented:** Dashboard remains read-only; this demo verifies artifact parsing only.
 

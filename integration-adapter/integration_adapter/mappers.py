@@ -58,14 +58,25 @@ def map_eval_inventory(rows: list[dict[str, Any]]) -> list[InventoryRecord]:
     ]
 
 
-def _field_source(raw: dict[str, Any], key: str, value: str) -> str:
-    if key in raw:
-        raw_value = raw.get(key)
-        if raw_value is not None and raw_value != "" and raw_value != [] and raw_value != {}:
-            return "sourced"
-    if value == "unavailable" or value == "":
-        return "unavailable"
-    return "derived"
+
+def _is_present(value: Any) -> bool:
+    return value not in (None, "", [], {})
+
+
+def _pick_value(raw: dict[str, Any], keys: list[str], *, payload: dict[str, Any] | None = None) -> tuple[str, str]:
+    payload_map = payload or {}
+    for key in keys:
+        if key in raw and _is_present(raw.get(key)):
+            return str(raw.get(key)), "sourced"
+        if key in payload_map and _is_present(payload_map.get(key)):
+            return str(payload_map.get(key)), "sourced"
+    return "", "unavailable"
+
+
+def _source_for_key(raw: dict[str, Any], key: str) -> str:
+    if key in raw and _is_present(raw.get(key)):
+        return "sourced"
+    return "unavailable"
 
 
 def map_runtime_event(raw: dict[str, Any]) -> NormalizedAuditEvent:
@@ -75,22 +86,21 @@ def map_runtime_event(raw: dict[str, Any]) -> NormalizedAuditEvent:
     """
 
     payload = dict(raw.get("event_payload") or {})
-    persona_or_agent_id = str(
-        raw.get("persona_or_agent_id")
-        or payload.get("persona_or_agent_id")
-        or raw.get("persona_id")
-        or payload.get("persona_id")
-        or raw.get("agent_id")
-        or payload.get("agent_id")
-        or "unavailable"
+    persona_or_agent_id, persona_source = _pick_value(
+        raw,
+        ["persona_or_agent_id", "persona_id", "agent_id"],
+        payload=payload,
     )
-    tool_invocation_id = str(
-        raw.get("tool_invocation_id")
-        or payload.get("tool_invocation_id")
-        or raw.get("tool_call_id")
-        or payload.get("tool_call_id")
-        or "unavailable"
+    if not persona_or_agent_id:
+        persona_or_agent_id = "unavailable"
+
+    tool_invocation_id, tool_invocation_source = _pick_value(
+        raw,
+        ["tool_invocation_id", "tool_call_id"],
+        payload=payload,
     )
+    if not tool_invocation_id:
+        tool_invocation_id = "unavailable"
 
     raw_chain = raw.get("delegation_chain")
     if isinstance(raw_chain, list):
@@ -106,22 +116,43 @@ def map_runtime_event(raw: dict[str, Any]) -> NormalizedAuditEvent:
             delegation_chain = [str(delegated_by)] if delegated_by else []
             delegation_chain_source = "derived" if delegation_chain else "unavailable"
 
-    decision_basis = str(raw.get("decision_basis") or payload.get("decision_basis") or payload.get("reason") or "unavailable")
-    resource_scope = str(
-        raw.get("resource_scope")
-        or payload.get("resource_scope")
-        or payload.get("source_id")
-        or payload.get("tool_name")
-        or "unavailable"
+    decision_basis, decision_source = _pick_value(
+        raw,
+        ["decision_basis", "reason"],
+        payload=payload,
     )
-    authz_result = str(
-        raw.get("authz_result")
-        or payload.get("authz_result")
-        or payload.get("decision")
-        or ("allow" if payload.get("allowed") is True else "deny" if payload.get("allowed") is False else "unavailable")
-    )
+    if not decision_basis:
+        decision_basis = "unavailable"
 
-    session_id = str(raw.get("session_id") or payload.get("session_id") or raw.get("trace_id") or "adapter-session")
+    resource_scope, resource_scope_source = _pick_value(
+        raw,
+        ["resource_scope", "source_id", "tool_name", "mcp_server"],
+        payload=payload,
+    )
+    if not resource_scope:
+        resource_scope = "unavailable"
+
+    authz_result, authz_source = _pick_value(
+        raw,
+        ["authz_result", "decision"],
+        payload=payload,
+    )
+    if not authz_result and payload.get("allowed") is True:
+        authz_result, authz_source = "allow", "derived"
+    elif not authz_result and payload.get("allowed") is False:
+        authz_result, authz_source = "deny", "derived"
+    elif not authz_result:
+        authz_result, authz_source = "unavailable", "unavailable"
+
+    session_id, session_source = _pick_value(
+        raw,
+        ["session_id", "chat_session_id"],
+        payload=payload,
+    )
+    if not session_id and _is_present(raw.get("trace_id")):
+        session_id, session_source = str(raw.get("trace_id")), "derived"
+    elif not session_id:
+        session_id, session_source = "adapter-session", "derived"
 
     event = NormalizedAuditEvent(
         event_id=str(raw.get("event_id") or f"evt-{uuid4()}"),
@@ -139,15 +170,15 @@ def map_runtime_event(raw: dict[str, Any]) -> NormalizedAuditEvent:
         resource_scope=resource_scope,
         authz_result=authz_result,
         identity_authz_field_sources={
-            "actor_id": _field_source(raw, "actor_id", str(raw.get("actor_id") or "")),
-            "tenant_id": _field_source(raw, "tenant_id", str(raw.get("tenant_id") or "")),
-            "session_id": _field_source(raw, "session_id", session_id),
-            "persona_or_agent_id": _field_source(raw, "persona_or_agent_id", persona_or_agent_id),
-            "tool_invocation_id": _field_source(raw, "tool_invocation_id", tool_invocation_id),
+            "actor_id": _source_for_key(raw, "actor_id") if raw.get("actor_id") else "derived",
+            "tenant_id": _source_for_key(raw, "tenant_id") if raw.get("tenant_id") else "derived",
+            "session_id": session_source,
+            "persona_or_agent_id": persona_source,
+            "tool_invocation_id": tool_invocation_source,
             "delegation_chain": delegation_chain_source,
-            "decision_basis": _field_source(raw, "decision_basis", decision_basis),
-            "resource_scope": _field_source(raw, "resource_scope", resource_scope),
-            "authz_result": _field_source(raw, "authz_result", authz_result),
+            "decision_basis": decision_source,
+            "resource_scope": resource_scope_source,
+            "authz_result": authz_source,
         },
         created_at=str(raw.get("created_at") or ""),
     )

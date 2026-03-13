@@ -15,6 +15,7 @@ Design:
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
 import importlib
 from pathlib import Path
 import sys
@@ -66,6 +67,14 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _iso_timestamp(value: Any) -> str | None:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
 
 
 @contextmanager
@@ -316,12 +325,46 @@ class EvalResultsExporter(_BaseExporter):
     """Exports eval results for governance normalization.
 
     Implemented: JSON snapshot source (array/object) from configured eval path.
+    Partially Implemented: static/config-backed Onyx eval inventory fallback when runtime modules are available.
     Unconfirmed: canonical multi-provider Onyx eval output compatibility for all fields.
     """
+
+    def _read_from_onyx_runtime_config(self) -> list[dict[str, Any]]:
+        """Best-effort read of eval metadata from Onyx runtime config.
+
+        Unconfirmed: canonical runtime hook not validated in this workspace.
+        Next-step verification: inspect live Onyx eval run persistence for this deployment.
+        """
+
+        try:
+            with _with_backend_on_path(self.onyx_root):
+                dataset_names = _runtime_import("onyx.configs.app_configs", "SCHEDULED_EVAL_DATASET_NAMES")
+                project_name = _runtime_import("onyx.configs.app_configs", "SCHEDULED_EVAL_PROJECT")
+        except Exception:
+            return []
+
+        rows: list[dict[str, Any]] = []
+        for index, dataset in enumerate(dataset_names or [], start=1):
+            if not dataset:
+                continue
+            scenario = str(dataset)
+            suite = f"{project_name}:{scenario}" if project_name else scenario
+            rows.append(
+                {
+                    "id": f"scheduled-eval-{index}",
+                    "suite": suite,
+                    "passed": False,
+                    "scenario": scenario,
+                    "score": 0,
+                }
+            )
+        return rows
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_EVALS_JSON", "evals")
         rows = self._read_json_records(path)
+        if not rows:
+            rows = self._read_from_onyx_runtime_config()
         normalized = map_eval_inventory(_safe_validate_inventory_rows(_to_rows(rows)))
         return [
             {
@@ -340,7 +383,7 @@ class RuntimeEventsExporter(_BaseExporter):
     """Exports security-relevant runtime events for audit normalization.
 
     Implemented: JSONL audit-feed extraction and schema filtering.
-    Partially Implemented: optional ToolCall-derived execution-attempt events from Onyx DB.
+    Partially Implemented: optional ChatSession/ToolCall-derived events from Onyx DB.
     Unconfirmed: canonical Onyx lifecycle/retrieval/tool decision stream parity across deployments.
     """
 
@@ -348,10 +391,12 @@ class RuntimeEventsExporter(_BaseExporter):
         try:
             with _with_backend_on_path(self.onyx_root):
                 get_session = _runtime_import("onyx.db.engine.sql_engine", "get_session")
+                ChatSession = _runtime_import("onyx.db.models", "ChatSession")
                 ToolCall = _runtime_import("onyx.db.models", "ToolCall")
                 Tool = _runtime_import("onyx.db.models", "Tool")
 
                 with get_session() as db_session:
+                    sessions = db_session.query(ChatSession).order_by(ChatSession.time_updated.desc()).limit(100).all()
                     tool_calls = db_session.query(ToolCall).order_by(ToolCall.id.desc()).limit(200).all()
                     tool_name_by_id = {
                         getattr(tool, "id", -1): str(getattr(tool, "name", "unknown_tool"))
@@ -359,6 +404,38 @@ class RuntimeEventsExporter(_BaseExporter):
                     }
 
                 rows: list[dict[str, Any]] = []
+                for session in sessions:
+                    session_id = str(getattr(session, "id", "unknown-trace"))
+                    actor_id = str(getattr(session, "user_id", "unknown-user"))
+                    created_at = _iso_timestamp(getattr(session, "time_created", None))
+                    updated_at = _iso_timestamp(getattr(session, "time_updated", None))
+
+                    start_event: dict[str, Any] = {
+                        "event_id": f"chat-session-start-{session_id}",
+                        "trace_id": session_id,
+                        "request_id": session_id,
+                        "event_type": "request.start",
+                        "actor_id": actor_id,
+                        "tenant_id": "unknown-tenant",
+                        "event_payload": {"source": "chat_session"},
+                    }
+                    if created_at:
+                        start_event["created_at"] = created_at
+                    rows.append(start_event)
+
+                    end_event: dict[str, Any] = {
+                        "event_id": f"chat-session-end-{session_id}",
+                        "trace_id": session_id,
+                        "request_id": session_id,
+                        "event_type": "request.end",
+                        "actor_id": actor_id,
+                        "tenant_id": "unknown-tenant",
+                        "event_payload": {"source": "chat_session"},
+                    }
+                    if updated_at:
+                        end_event["created_at"] = updated_at
+                    rows.append(end_event)
+
                 for call in tool_calls:
                     chat_session_id = str(getattr(call, "chat_session_id", "unknown-trace"))
                     tool_id = getattr(call, "tool_id", -1)

@@ -1,75 +1,73 @@
 # Final Hardening Review (Surgical)
 
-This review is scoped to repository integrity and explainability for AI Trust & Security readiness work.
+**Implemented:** This review is scoped to repository integrity and explainability for AI Trust & Security readiness work in this workspace.
 
 ## 1) Architecture integrity
-- **Status:** Good with caveats.
-- **Implemented:** clear three-plane separation (`onyx-main`, `integration-adapter`, `myStarterKit-maindashb-main`).
-- **Risk:** some optional DB-backed adapter paths are runtime-environment dependent.
+- **Implemented:** Three-plane separation is preserved (`onyx-main`, `integration-adapter`, `myStarterKit-maindashb-main`).
+- **Partially Implemented:** Runtime-linked adapter behavior still depends on optional environment-backed hooks.
+- **Unconfirmed:** Deployment-wide parity of all runtime hooks is not validated in this workspace.
 
 ## 2) Coupling risk
-- **Status:** Moderate, controlled.
-- **Implemented:** artifact contract boundary and read-only dashboard ingestion.
-- **Partially Implemented:** adapter optionally imports Onyx DB modules when available.
-- **Hardening update:** demo scenario now cleans temporary `sys.path` insertion to reduce import side effects.
+- **Implemented:** Artifact contracts remain the integration boundary and dashboard ingestion remains read-only.
+- **Partially Implemented:** Adapter includes optional imports of Onyx runtime modules for best-effort extraction.
+- **Unconfirmed:** Optional runtime imports can still vary by deployment shape and package layout.
 
 ## 3) Provenance clarity
-- **Status:** Partial.
-- **Implemented:** provenance and compatibility docs exist.
-- **Unconfirmed:** nested upstream git metadata unavailable in this workspace for complete commit pinning.
+- **Implemented:** Provenance and compatibility docs exist and are linked from root docs.
+- **Partially Implemented:** Claim/status labeling is now explicit across major docs and adapter comments.
+- **Unconfirmed:** Full upstream commit pinning cannot be completed from this workspace checkout alone.
 
 ## 4) Exporter robustness
-- **Status:** Moderate.
-- **Implemented:** file-backed extraction, malformed input tolerance, safe fallback behavior.
-- **Partially Implemented:** optional DB extraction guarded by try/fallback.
-- **Risk:** broad exception handling hides exact runtime failures (intentional fail-soft behavior).
+- **Implemented:** File-backed reads, malformed-input tolerance, and defensive fallbacks are in place.
+- **Partially Implemented:** DB-backed reads are best-effort and guarded by fallback behavior.
+- **Unconfirmed:** Canonical runtime hook fidelity for all exporter domains is not fully verified in CI.
 
 ## 5) Schema drift risk
-- **Status:** Moderate.
-- **Implemented:** schema/event vocabulary tests and malformed input tests.
-- **Risk:** live runtime payloads may evolve; adapter normalization may need versioned contracts.
+- **Implemented:** Schema validation and malformed/missing input tests are present.
+- **Partially Implemented:** Drift detection is reactive (tests/contracts) rather than explicit version negotiation.
+- **Planned:** Add schema/version contracts and compatibility checks for upstream payload evolution.
 
 ## 6) Launch-gate honesty
-- **Status:** Good.
-- **Implemented:** evidence-quality checks with fail-closed semantics on missing/malformed artifacts.
-- **Explicit limitation:** launch-gate output does not claim production enforcement proof.
+- **Implemented:** Launch-gate checks evidence quality/completeness and fails closed on malformed evidence.
+- **Implemented:** Machine output separates blockers vs warnings and evidence present vs incomplete.
+- **Unconfirmed:** Launch-gate output is not standalone proof of production runtime control enforcement.
 
 ## 7) Dashboard read-only integrity
-- **Status:** Good.
-- **Implemented:** GET-only API; mutating methods return 405.
-- **Implemented:** localhost-safe default binding with explicit remote opt-in.
+- **Implemented:** Dashboard APIs remain read-only (mutating methods rejected).
+- **Implemented:** Localhost-safe defaults are preserved with explicit remote opt-in.
+- **Partially Implemented:** Cross-root artifact compatibility is test-backed for current artifact shapes, but future shape drift still requires ongoing coverage.
 
 ## 8) Demo reproducibility
-- **Status:** Good.
-- **Implemented:** deterministic demo CLI + smoke tests + expected artifact outputs.
-- **Implemented:** real-vs-synthetic labeling in demo report.
-- **Implemented:** one-command evidence pipeline now runs launch-gate against the same artifacts root selected for generation.
+- **Implemented:** Reproducible demo command path and deterministic artifact generation flow exist.
+- **Partially Implemented:** Demo uses synthetic fallback evidence when live runtime data is unavailable.
+- **Unconfirmed:** Demo realism does not guarantee production runtime parity.
 
 ## 9) Maintainability
-- **Status:** Improving.
-- **Implemented:** modular adapter commands and docs.
-- **Risk:** growing docs need periodic claim-audit to avoid drift.
+- **Implemented:** Pipeline entrypoints are modular and test-covered across unit/integration-style boundaries.
+- **Partially Implemented:** Documentation and claim audits are improved but require recurring maintenance to avoid drift.
+- **Planned:** Automate claim-audit and compatibility checks in CI.
 
 ## 10) Next-step roadmap
-See prioritized list below.
+- **Implemented:** Priority roadmap is defined below.
+- **Planned:** Execute roadmap in small additive changes with test-first validation.
 
 ---
 
 ## Unresolved blockers
 
-1. Upstream commit pinning for `onyx-main` and `myStarterKit-maindashb-main` cannot be fully verified from current checkout state (no nested `.git`).
-2. Canonical production event/eval hook parity across all Onyx deployment modes remains unconfirmed.
-3. Optional Onyx DB-backed exporter paths are not consistently runnable in all CI/test environments.
+1. **Unconfirmed:** Upstream commit pinning for `onyx-main` and `myStarterKit-maindashb-main` is incomplete because nested `.git` metadata is not fully available in this workspace.
+2. **Unconfirmed:** Canonical production event/eval/runtime-hook parity across all Onyx deployment modes is not yet validated.
+3. **Partially Implemented:** Optional Onyx DB-backed exporter paths are not consistently runnable in all CI environments.
 
-## Prioritized next 10 implementation steps
+## Prioritized top 10 next implementation steps
 
-1. Add machine-readable provenance lock file (`docs/upstream-provenance.lock.json`) and populate once nested git metadata is available.
-2. Add adapter input contract versioning for runtime payload shapes (e.g., `schema_version` field and compatibility checks).
-3. Add exporter telemetry counters (read source, fallback mode, parse failures) in non-sensitive logs.
-4. Add environment-gated integration tests for optional Onyx DB exporter paths.
-5. Add contract tests against representative real Onyx artifacts captured from a pinned runtime version.
-6. Add launch-gate check for artifact freshness windows (timestamp staleness thresholds).
-7. Add explicit adapter release notes section documenting breaking/non-breaking mapping changes.
-8. Add dashboard UI badge to highlight demo/synthetic evidence mode more prominently.
-9. Add stricter static type checks for adapter modules in CI (e.g., mypy/pyright profile).
-10. Add periodic doc claim-audit checklist in CI to ensure status labels remain aligned with implementation.
+1. **Planned:** Add machine-readable provenance lock file (`docs/upstream-provenance.lock.json`) and populate when nested git metadata is available.
+2. **Planned:** Add adapter input contract versioning (`schema_version`) with explicit compatibility checks.
+3. **Planned:** Add exporter telemetry counters (selected source, fallback mode, parse/validation failures) in non-sensitive logs.
+4. **Planned:** Add environment-gated integration tests for optional Onyx DB exporter paths.
+5. **Planned:** Add contract tests against pinned real Onyx artifact fixtures.
+6. **Planned:** Add launch-gate artifact freshness checks (timestamp staleness thresholds).
+7. **Planned:** Add adapter release-notes section for mapping/schema compatibility changes.
+8. **Planned:** Add dashboard UX indicator for demo/synthetic evidence mode.
+9. **Planned:** Add stricter static typing checks for adapter modules in CI.
+10. **Planned:** Add periodic doc claim-audit automation in CI to keep status labels aligned with implementation.

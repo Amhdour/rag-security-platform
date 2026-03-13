@@ -1,39 +1,27 @@
-# AGENTS.md - Engineering Guidance
+# AGENTS.md — Starter Kit (workspace integration)
 
-Scope: Entire repository.
+Scope: `myStarterKit-maindashb-main/`
 
 ## Mission
-Build a secure, production-oriented support-agent system incrementally, prioritizing correctness, safety, and auditability over speed.
+Maintain governance/evidence behavior with a **read-only dashboard** in this integration workspace.
 
-## Core Guardrails
-1. Do not bypass policy checks in new execution paths.
-2. Do not add direct tool invocation paths from user input.
-3. Do not introduce unreviewed data egress from sensitive contexts.
-4. Do not claim security controls that are not implemented and tested.
-5. Ensure every major decision point can be logged/audited.
+## Must-follow rules
+1. Keep observability and dashboard APIs read-only (no mutating endpoints).
+2. Preserve localhost-safe defaults unless explicitly requested otherwise.
+3. Do not claim runtime enforcement guarantees not implemented and test-backed.
+4. Use explicit claim labels where relevant: **Implemented / Partially Implemented / Demo-only / Unconfirmed / Planned**.
 
-## Implementation Expectations
-- Keep module boundaries strict:
-  - `app/` orchestrates flows.
-  - `retrieval/` handles retrieval abstractions.
-  - `tools/` defines tool contracts and registry behavior.
-  - `policies/` defines policy models and enforcement interfaces.
-  - `telemetry/audit/` defines audit schema and event pipeline interfaces.
-  - `evals/` contains quality/safety evaluation harnesses.
-  - `launch_gate/` contains release-readiness checks and criteria.
-- Favor interface-first design with typed contracts before provider-specific code.
-- Add tests with any non-trivial behavior.
-- Keep docs aligned with actual implementation status.
+## Integration expectations
+- Treat adapter artifacts as evidence inputs; do not add runtime-control side effects.
+- If artifact shape/path assumptions are uncertain, mark them **Unconfirmed** and document next verification step.
+- Handle missing/malformed artifacts defensively (safe empty state, no crashes).
 
-## Safe Defaults
-- Use deny-by-default where policy state is unknown.
-- Use explicit allowlists for tools and retrieval sources.
-- Attach request IDs and actor metadata to all major events.
-- Fail closed when critical policy/telemetry dependencies are unavailable.
+## Test-before-claim
+- Run targeted Starter Kit tests for touched observability/dashboard behavior.
+- Broaden test scope when changing artifact compatibility paths.
 
-## Review Checklist (for future phases)
-- [ ] Threat model updated for changed data flows.
-- [ ] New code paths include policy checkpoints.
-- [ ] New code paths include telemetry/audit hooks.
-- [ ] Tests cover success and failure modes.
-- [ ] Documentation updated to reflect true behavior.
+## Docs sync
+When behavior changes, update:
+- `myStarterKit-maindashb-main/README.md`
+- `myStarterKit-maindashb-main/docs/observability_artifact_readers.md`
+- Any workspace-level docs that describe dashboard compatibility/status.

@@ -634,7 +634,7 @@ class DashboardService:
 
     def _build_trace_explanations(self) -> list[dict[str, object]]:
         events, _ = read_audit_jsonl(self.paths.audit_jsonl)
-        replay_links = load_replay_links(self.paths.repo_root)
+        replay_links = load_replay_links(self.paths.repo_root, artifacts_root=self.paths.artifacts_root)
         return build_trace_explanations(events, replay_links=replay_links)
 
     def _artifact_parse_diagnostics(self) -> dict[str, object]:

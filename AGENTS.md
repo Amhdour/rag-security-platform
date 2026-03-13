@@ -1,66 +1,54 @@
 # AGENTS.md — rag-security-platform-main
 
-## Repository purpose
-This repo is an **integration workspace** for three coordinated planes:
-- `onyx-main/` (runtime execution)
-- `integration-adapter/` (translation/artifact generation)
-- `myStarterKit-maindashb-main/` (governance/evidence/read-only dashboard)
+## Mission (workspace-level)
+Keep this repository a **three-plane integration workspace**:
+- `onyx-main/` = runtime execution
+- `integration-adapter/` = read/normalize/export artifacts
+- `myStarterKit-maindashb-main/` = governance + read-only observability
 
-## Separation of concerns (must preserve)
-- **Onyx**: request handling, retrieval, connectors, tools, MCP runtime behavior.
-- **Integration adapter**: read/normalize/export artifacts only.
-- **Starter Kit**: governance checks, evidence views, launch-gate, read-only observability.
+## Non-negotiable rules
+1. **Additive integration only.** Prefer changes in `integration-adapter/`, root docs, and root automation files.
+2. **No destructive merges.** Do not rewrite/flatten upstream repos into one combined codebase.
+3. **Dashboard stays read-only.** No mutating endpoints/behaviors in dashboard/observability paths.
+4. **Artifact boundary first.** Integrate planes through artifacts (`audit.jsonl`, replay, eval, launch_gate), not runtime coupling.
 
-## Non-invasive integration policy
-- Prefer additive changes in `integration-adapter/`.
-- Avoid invasive runtime rewrites when an adapter-side approach is feasible.
-- Use artifact contracts (`audit.jsonl`, replay, eval, launch_gate) as integration boundary.
-
-## No destructive merge rule
-- Do **not** destructively merge upstream repos into one rewritten codebase.
-- Keep upstream directories distinct and attributable.
-
-## Dashboard read-only rule
-- Dashboard/API must remain read-only.
-- No mutating endpoints for policy/runtime/tool execution from dashboard paths.
-- Preserve localhost-safe defaults unless explicitly requested otherwise.
-
-## Honest-claims policy
-- Never claim production security/enforcement guarantees not implemented and tested.
-- Label status explicitly in docs/comments when relevant:
+## Claims & status labels (required)
+- Never claim production security/enforcement unless implemented **and tested**.
+- Label claim-bearing docs/comments with one of:
   - **Implemented**
   - **Partially Implemented**
   - **Demo-only**
   - **Unconfirmed**
   - **Planned**
 
-## Testing expectations
-- Run relevant fast tests after each major change.
-- For adapter work, default to:
+## When to mark `Unconfirmed`
+Mark as **Unconfirmed** when any of these are true:
+- Hook/path is inferred but not validated in this workspace.
+- Behavior depends on environment/runtime services not exercised in tests.
+- Claim needs deployment-specific verification.
+
+Use explicit wording where relevant:
+`Unconfirmed: canonical runtime hook not validated in this workspace.`
+
+## Exporter workflow (adapter)
+1. Inspect real Onyx models/configs/fixtures first.
+2. Implement smallest read-only extractor.
+3. Keep extraction, translation, and writing separate.
+4. Add schema validation + malformed/missing input handling.
+5. Add deterministic tests before broad doc claims.
+
+## Test-before-claim rule
+- Run relevant tests **before** updating docs/claims.
+- Minimum for adapter changes:
   - `cd integration-adapter && python -m pytest -q`
-- For dashboard/observability changes, run targeted Starter Kit tests and broaden if needed.
-- Prefer deterministic fixtures and fail-closed behavior tests for malformed/missing evidence.
+- For dashboard/observability changes, run targeted Starter Kit tests and broaden as needed.
 
-## Documentation update expectations
-- Update docs when behavior/contracts/status labels change.
-- Keep README + adapter README + relevant docs in sync.
-- Track known blind spots/unconfirmed assumptions in docs.
+## Demo data labeling
+- Demo/synthetic evidence must be explicitly labeled **Demo-only** in reports/docs.
+- Do not present demo outputs as proof of production enforcement.
 
-## Preferred execution order
-1. Inspect existing code/docs/tests and identify real vs placeholder vs unconfirmed.
-2. Implement smallest safe additive change.
-3. Add/update tests.
-4. Run validation commands.
-5. Update docs/comments to match actual behavior.
-6. Commit with focused scope.
-
-## Marking unconfirmed runtime hooks
-- Use explicit markers in code comments/docs, e.g.:
-  - `Unconfirmed: canonical runtime hook not validated in this workspace.`
-- Provide next-step verification command/path whenever possible.
-
-## Coding style (adapter modules)
-- Keep extraction, normalization, and writing concerns separate.
-- Prefer small typed helpers and explicit defaults for missing fields.
-- Handle malformed input defensively; fail closed for launch-gate/evidence integrity checks.
-- Avoid hidden coupling to Onyx internals; if optional runtime imports are used, guard them and document fallback behavior.
+## Documentation sync after code changes
+When behavior/contracts/status change, update:
+- root `README.md`
+- `integration-adapter/README.md`
+- relevant docs under `docs/` (e.g., threat model, demo, blind spots, hardening review)
