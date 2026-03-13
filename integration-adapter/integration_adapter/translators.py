@@ -19,6 +19,7 @@ from integration_adapter.schemas import (
     StarterKitEvalRow,
 )
 
+
 def _safe_int(value: object, default: int = 0) -> int:
     try:
         return int(value)
@@ -72,6 +73,9 @@ def translate_retrieval_events(payload: list[dict[str, Any]]) -> list[Normalized
                     "tenant_id": record.tenant_id,
                     "actor_id": record.actor_id,
                     "event_type": "retrieval.decision",
+                    "decision_basis": record.reason or "retrieval_policy",
+                    "resource_scope": record.source_id,
+                    "authz_result": "allow" if record.allowed else "deny",
                     "event_payload": {
                         "source_id": record.source_id,
                         "query": record.query,
@@ -115,6 +119,9 @@ def translate_tool_decisions(payload: list[dict[str, Any]]) -> list[NormalizedAu
                     "tenant_id": record.tenant_id,
                     "actor_id": record.actor_id,
                     "event_type": "tool.decision",
+                    "decision_basis": record.reason or "tool_policy",
+                    "resource_scope": record.tool_name,
+                    "authz_result": record.decision,
                     "event_payload": {
                         "tool_name": record.tool_name,
                         "decision": record.decision,
@@ -133,13 +140,17 @@ def translate_tool_decisions(payload: list[dict[str, Any]]) -> list[NormalizedAu
                         "tenant_id": record.tenant_id,
                         "actor_id": record.actor_id,
                         "event_type": "confirmation.required",
+                        "decision_basis": "confirmation_policy",
+                        "resource_scope": record.tool_name,
+                        "authz_result": "require_confirmation",
                         "event_payload": {
                             "tool_name": record.tool_name,
-                            "reason": record.reason or "confirmation required",
+                            "decision": record.decision,
                         },
                     }
                 )
             )
+
     return events
 
 
@@ -147,17 +158,17 @@ def translate_mcp_inventory(payload: list[dict[str, Any]]) -> list[InventoryReco
     """Translate MCP server inventory into starter-kit inventory rows.
 
     TODO(onyx-runtime-hook): confirm canonical Onyx MCP inventory source and field names
-    for auth mode, connection state, and server tool discovery metadata.
+    across deployment modes.
     """
 
     return map_mcp_inventory(payload)
 
 
 def translate_mcp_usage(payload: list[dict[str, Any]]) -> list[NormalizedAuditEvent]:
-    """Translate MCP usage into tool execution attempt events.
+    """Translate MCP usage/tool execution decisions into normalized audit events.
 
     TODO(onyx-runtime-hook): confirm canonical Onyx MCP usage feed and the source of
-    runtime decision status for allow/deny/fallback semantics.
+    decision/failure semantics.
     """
 
     events: list[NormalizedAuditEvent] = []
@@ -168,8 +179,8 @@ def translate_mcp_usage(payload: list[dict[str, Any]]) -> list[NormalizedAuditEv
             tenant_id=str(row.get("tenant_id", "unknown-tenant")),
             actor_id=str(row.get("actor_id", "mcp-runtime")),
             mcp_server=str(row.get("mcp_server", "unknown_mcp_server")),
-            tool_name=str(row.get("tool_name", row.get("tool", "unknown_tool"))),
-            decision=str(row.get("decision", "unknown")),
+            tool_name=str(row.get("tool_name", "unknown_tool")),
+            decision=str(row.get("decision", "deny")),
             reason=str(row.get("reason", "")),
         )
         events.append(
@@ -180,6 +191,9 @@ def translate_mcp_usage(payload: list[dict[str, Any]]) -> list[NormalizedAuditEv
                     "tenant_id": record.tenant_id,
                     "actor_id": record.actor_id,
                     "event_type": "tool.execution_attempt",
+                    "decision_basis": record.reason or "mcp_policy",
+                    "resource_scope": f"{record.mcp_server}:{record.tool_name}",
+                    "authz_result": record.decision,
                     "event_payload": {
                         "mcp_server": record.mcp_server,
                         "tool_name": record.tool_name,

@@ -43,6 +43,7 @@ This review is scoped to repository integrity and explainability for AI Trust & 
 - **Status:** Good.
 - **Implemented:** deterministic demo CLI + smoke tests + expected artifact outputs.
 - **Implemented:** real-vs-synthetic labeling in demo report.
+- **Implemented:** one-command evidence pipeline now runs launch-gate against the same artifacts root selected for generation.
 
 ## 9) Maintainability
 - **Status:** Improving.

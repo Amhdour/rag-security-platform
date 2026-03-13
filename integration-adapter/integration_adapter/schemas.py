@@ -30,6 +30,19 @@ class NormalizedAuditEvent:
     event_payload: Mapping[str, Any] = field(default_factory=dict)
     session_id: str = "adapter-session"
     actor_type: str = "assistant_runtime"
+
+    # Normalized identity/authz evidence fields
+    persona_or_agent_id: str = "unavailable"
+    tool_invocation_id: str = "unavailable"
+    delegation_chain: list[str] = field(default_factory=list)
+    decision_basis: str = "unavailable"
+    resource_scope: str = "unavailable"
+    authz_result: str = "unavailable"
+
+    # Marks whether each field is sourced from runtime, derived by adapter, or unavailable.
+    # Values: sourced | derived | unavailable
+    identity_authz_field_sources: Mapping[str, str] = field(default_factory=dict)
+
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def validate(self) -> None:
@@ -49,6 +62,10 @@ class NormalizedAuditEvent:
             raise ValueError("session_id is required")
         if not self.actor_type:
             raise ValueError("actor_type is required")
+        if not isinstance(self.delegation_chain, list):
+            raise ValueError("delegation_chain must be a list")
+        if any(not isinstance(item, str) for item in self.delegation_chain):
+            raise ValueError("delegation_chain must contain only strings")
 
     def to_dict(self) -> dict[str, Any]:
         self.validate()

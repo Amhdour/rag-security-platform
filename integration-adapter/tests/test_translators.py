@@ -12,6 +12,8 @@ def test_translate_retrieval_events_emits_retrieval_decision() -> None:
     ])
     assert events[0].event_type == "retrieval.decision"
     assert events[0].event_payload["source_id"] == "con-1"
+    assert events[0].resource_scope == "con-1"
+    assert events[0].authz_result == "allow"
 
 
 def test_translate_tool_decisions_emits_confirmation_when_required() -> None:
@@ -26,6 +28,8 @@ def test_translate_tool_decisions_emits_confirmation_when_required() -> None:
         }
     ])
     assert [event.event_type for event in events] == ["tool.decision", "confirmation.required"]
+    assert events[0].resource_scope == "admin_shell"
+    assert events[0].authz_result == "require_confirmation"
 
 
 def test_translate_mcp_usage_emits_tool_execution_attempt() -> None:
@@ -34,6 +38,7 @@ def test_translate_mcp_usage_emits_tool_execution_attempt() -> None:
     ])
     assert events[0].event_type == "tool.execution_attempt"
     assert events[0].event_payload["mcp_server"] == "ops-mcp"
+    assert events[0].resource_scope == "ops-mcp:runbook"
 
 
 def test_translate_eval_outputs_returns_starterkit_rows() -> None:

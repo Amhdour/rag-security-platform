@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 
 from integration_adapter.exporters import (
     ConnectorInventoryExporter,
@@ -148,6 +149,72 @@ def test_runtime_events_exporter_filters_invalid_event_types(tmp_path, monkeypat
     assert rows[0]["event_type"] == "request.start"
 
 
+def test_connector_exporter_db_fallback_path(monkeypatch) -> None:
+    exporter = ConnectorInventoryExporter()
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: [])
+    monkeypatch.setattr(
+        exporter,
+        "_read_from_onyx_db",
+        lambda: [
+            {
+                "id": 1,
+                "name": "drive",
+                "status": "active",
+                "source_type": "google_drive",
+                "indexed": True,
+            }
+        ],
+    )
+    rows = exporter.export()
+    assert rows[0]["name"] == "drive"
+    assert rows[0]["indexed"] is True
+
+
+def test_tool_exporter_db_fallback_path(monkeypatch) -> None:
+    exporter = ToolInventoryExporter()
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: [])
+    monkeypatch.setattr(
+        exporter,
+        "_read_from_onyx_db",
+        lambda: [{"id": 7, "name": "builtin", "status": "enabled", "risk_tier": "low", "enabled": True}],
+    )
+    rows = exporter.export()
+    assert rows == [{"id": "7", "name": "builtin", "status": "enabled", "risk_tier": "low", "enabled": True}]
+
+
+def test_mcp_exporter_db_fallback_path(monkeypatch) -> None:
+    exporter = MCPInventoryExporter()
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: [])
+    monkeypatch.setattr(
+        exporter,
+        "_read_from_onyx_db",
+        lambda: [{"id": 3, "name": "mcp", "status": "connected", "endpoint": "http://mcp", "usage_count": 11}],
+    )
+    rows = exporter.export()
+    assert rows[0]["usage_count"] == 11
+
+
+def test_runtime_events_exporter_db_fallback_path(monkeypatch) -> None:
+    exporter = RuntimeEventsExporter()
+    monkeypatch.setattr(exporter, "_read_jsonl_records", lambda _path: [])
+    monkeypatch.setattr(
+        exporter,
+        "_read_from_onyx_db",
+        lambda: [
+            {
+                "request_id": "req-1",
+                "trace_id": "trace-1",
+                "event_type": "tool.execution_attempt",
+                "actor_id": "tool-runtime",
+                "tenant_id": "tenant-a",
+                "event_payload": {"tool_name": "search"},
+            }
+        ],
+    )
+    rows = exporter.export()
+    assert rows and rows[0]["event_type"] == "tool.execution_attempt"
+
+
 def test_exporters_gracefully_handle_missing_files(monkeypatch) -> None:
     monkeypatch.setenv("INTEGRATION_ADAPTER_ONYX_CONNECTORS_JSON", "/tmp/does-not-exist-connectors.json")
     monkeypatch.setenv("INTEGRATION_ADAPTER_ONYX_TOOLS_JSON", "/tmp/does-not-exist-tools.json")
@@ -160,3 +227,11 @@ def test_exporters_gracefully_handle_missing_files(monkeypatch) -> None:
     assert MCPInventoryExporter().export() == []
     assert EvalResultsExporter().export() == []
     assert RuntimeEventsExporter().export() == []
+
+
+def test_tool_risk_tier_heuristics() -> None:
+    exporter = ToolInventoryExporter()
+    assert exporter._derive_risk_tier(SimpleNamespace(passthrough_auth=True, mcp_server_id=None, openapi_schema=None, in_code_tool_id=None)) == "high"
+    assert exporter._derive_risk_tier(SimpleNamespace(passthrough_auth=False, mcp_server_id=9, openapi_schema=None, in_code_tool_id=None)) == "high"
+    assert exporter._derive_risk_tier(SimpleNamespace(passthrough_auth=False, mcp_server_id=None, openapi_schema={"type": "object"}, in_code_tool_id=None)) == "medium"
+    assert exporter._derive_risk_tier(SimpleNamespace(passthrough_auth=False, mcp_server_id=None, openapi_schema=None, in_code_tool_id="search")) == "low"

@@ -6,6 +6,7 @@ from typing import Mapping, Sequence
 
 from observability.contracts import EvalRunSummary, ReplaySummary, TraceSummary
 from observability.artifact_paths import ArtifactPaths
+from observability.artifact_readers import ArtifactReaders
 from observability.eval_normalization import (
     high_critical_failures,
     parse_eval_jsonl,
@@ -42,7 +43,14 @@ class DashboardService:
         explanations = self._build_trace_explanations()
         connected = self._summarize_trace_connections(explanations, eval_runs=evals, launch_gate=launch_gate, verification=verification)
         integrity = self._artifact_integrity_overview(replay=replay, evals=evals, launch_gate=launch_gate, verification=verification)
-        empty_state = self._build_empty_state(traces=traces, replay=replay, evals=evals, launch_gate=launch_gate)
+        diagnostics = self._artifact_parse_diagnostics()
+        empty_state = self._build_empty_state(
+            traces=traces,
+            replay=replay,
+            evals=evals,
+            launch_gate=launch_gate,
+            diagnostics=diagnostics,
+        )
         return {
             "counts": {
                 "traces": len(traces),
@@ -91,6 +99,7 @@ class DashboardService:
             "read_only": True,
             "demo_mode": self.paths.demo_mode,
             "artifacts_root": self.paths.relative(self.paths.artifacts_root),
+            "artifact_diagnostics": diagnostics,
             "empty_state": empty_state,
         }
 
@@ -268,24 +277,43 @@ class DashboardService:
         replay: Sequence[Mapping[str, object]],
         evals: Sequence[Mapping[str, object]],
         launch_gate: Mapping[str, object] | None,
+        diagnostics: Mapping[str, object],
     ) -> dict[str, object]:
         """Describe actionable empty-state guidance for dashboard users."""
 
         has_any_artifacts = bool(traces) or bool(replay) or bool(evals) or bool(launch_gate)
+        malformed_files = int(diagnostics.get("malformed_files", 0))
+        malformed_lines = int(diagnostics.get("malformed_lines", 0))
+
         if has_any_artifacts:
             return {"present": False, "message": ""}
 
         artifacts_root = self.paths.relative(self.paths.artifacts_root)
+        title = "No runtime artifacts found"
+        message = "Dashboard is read-only and currently has no audit/replay/eval/launch-gate artifacts to display."
+        if malformed_files > 0 or malformed_lines > 0:
+            title = "Artifacts found but malformed"
+            message = (
+                "Dashboard detected artifact files, but parsing failed for one or more files. "
+                "Fix malformed JSON/JSONL and reload."
+            )
+
         return {
             "present": True,
-            "title": "No runtime artifacts found",
-            "message": "Dashboard is read-only and currently has no audit/replay/eval/launch-gate artifacts to display.",
+            "title": title,
+            "message": message,
             "artifacts_root": artifacts_root,
+            "diagnostics": {
+                "malformed_files": malformed_files,
+                "malformed_lines": malformed_lines,
+                "parse_errors": diagnostics.get("parse_errors", []),
+            },
             "suggested_commands": [
                 "python scripts/generate_dashboard_demo_artifacts.py",
                 "DASHBOARD_ARTIFACTS_ROOT=artifacts/demo/dashboard_logs python -m observability.api",
                 "cd ../integration-adapter && python -m integration_adapter.demo_scenario",
-                "cd ../integration-adapter && INTEGRATION_ADAPTER_ARTIFACTS_ROOT=artifacts/logs python -m integration_adapter.generate_artifacts --demo",
+                "cd ../integration-adapter && python -m integration_adapter.evidence_pipeline --demo",
+                "cd . && DASHBOARD_ARTIFACTS_ROOT=../integration-adapter/artifacts/logs python -m observability.api",
             ],
             "notes": [
                 "For integration deployments, point DASHBOARD_ARTIFACTS_ROOT, INTEGRATION_ADAPTER_ARTIFACTS_ROOT, or INTEGRATION_ARTIFACTS_ROOT to generated artifacts.",
@@ -608,6 +636,45 @@ class DashboardService:
         events, _ = read_audit_jsonl(self.paths.audit_jsonl)
         replay_links = load_replay_links(self.paths.repo_root)
         return build_trace_explanations(events, replay_links=replay_links)
+
+    def _artifact_parse_diagnostics(self) -> dict[str, object]:
+        """Aggregate malformed line/file diagnostics from artifact readers."""
+
+        readers = ArtifactReaders(self.paths.repo_root, artifacts_root=self.paths.artifacts_root)
+        payload = readers.read_all()
+
+        malformed_files = 0
+        malformed_lines = 0
+        parse_errors: list[dict[str, object]] = []
+
+        def _consume(record: object) -> None:
+            nonlocal malformed_files, malformed_lines
+            if record is None:
+                return
+            parsed = bool(getattr(record, "parsed", True))
+            if not parsed:
+                malformed_files += 1
+                parse_errors.append(
+                    {
+                        "path": getattr(record, "path", None),
+                        "error": getattr(record, "error", "parse_error"),
+                        "format": getattr(record, "format", None),
+                    }
+                )
+            malformed_lines += int(getattr(record, "malformed_lines", 0) or 0)
+
+        for value in payload.values():
+            if isinstance(value, list):
+                for item in value:
+                    _consume(item)
+                continue
+            _consume(value)
+
+        return {
+            "malformed_files": malformed_files,
+            "malformed_lines": malformed_lines,
+            "parse_errors": parse_errors,
+        }
 
     def _summary_matches_filters(self, row: Mapping[str, object], filters: Mapping[str, str]) -> bool:
         active = {k: v for k, v in filters.items() if v}

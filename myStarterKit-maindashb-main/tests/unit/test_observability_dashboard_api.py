@@ -362,6 +362,64 @@ def test_create_server_uses_integration_artifacts_root_env_when_dashboard_env_mi
         server.server_close()
 
 
+
+
+def test_dashboard_service_overview_reports_artifact_diagnostics(tmp_path: Path) -> None:
+    _seed_artifacts(tmp_path)
+    service = DashboardService(tmp_path)
+    overview = service.get_overview()
+
+    diagnostics = overview.get("artifact_diagnostics", {})
+    assert diagnostics.get("malformed_files") == 1
+    assert diagnostics.get("malformed_lines") == 1
+    parse_errors = diagnostics.get("parse_errors", [])
+    assert any("replay/malformed.replay.json" in str(item.get("path", "")) for item in parse_errors)
+
+
+def test_dashboard_service_empty_state_identifies_malformed_artifacts(tmp_path: Path) -> None:
+    logs = tmp_path / "artifacts/logs"
+    (logs / "evals").mkdir(parents=True, exist_ok=True)
+    (logs / "replay").mkdir(parents=True, exist_ok=True)
+    (logs / "launch_gate").mkdir(parents=True, exist_ok=True)
+    (logs / "verification").mkdir(parents=True, exist_ok=True)
+    (logs / "audit.jsonl").write_text("not-json")
+    (logs / "replay/bad.replay.json").write_text("{bad-json")
+
+    service = DashboardService(tmp_path)
+    overview = service.get_overview()
+
+    empty_state = overview.get("empty_state", {})
+    assert empty_state.get("present") is True
+    assert "malformed" in str(empty_state.get("title", "")).lower()
+    diagnostics = empty_state.get("diagnostics", {})
+    assert diagnostics.get("malformed_files") == 1
+    assert diagnostics.get("malformed_lines") == 1
+
+
+def test_create_server_falls_back_to_sibling_integration_adapter_artifacts(tmp_path: Path, monkeypatch) -> None:
+    dashboard_root = tmp_path / "myStarterKit-maindashb-main"
+    (dashboard_root / "observability/web/static").mkdir(parents=True, exist_ok=True)
+    (dashboard_root / "observability/web/index.html").write_text("ok")
+    (dashboard_root / "observability/web/static/app.js").write_text("ok")
+
+    adapter_root = tmp_path / "integration-adapter" / "artifacts" / "logs"
+    (adapter_root / "replay").mkdir(parents=True, exist_ok=True)
+    (adapter_root / "evals").mkdir(parents=True, exist_ok=True)
+    (adapter_root / "launch_gate").mkdir(parents=True, exist_ok=True)
+    (adapter_root / "audit.jsonl").write_text("")
+
+    monkeypatch.delenv("DASHBOARD_ARTIFACTS_ROOT", raising=False)
+    monkeypatch.delenv("INTEGRATION_ARTIFACTS_ROOT", raising=False)
+    monkeypatch.delenv("INTEGRATION_ADAPTER_ARTIFACTS_ROOT", raising=False)
+
+    server = create_server(host="127.0.0.1", port=0, repo_root=dashboard_root)
+    try:
+        service = server.RequestHandlerClass.service
+        assert service is not None
+        assert service.paths.artifacts_root == adapter_root.resolve()
+    finally:
+        server.server_close()
+
 def test_dashboard_api_returns_500_when_service_raises(tmp_path: Path, monkeypatch) -> None:
     _seed_artifacts(tmp_path)
 

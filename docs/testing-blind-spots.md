@@ -30,3 +30,9 @@ This repository includes strong artifact-level verification, but some runtime as
 - Treat adapter launch-gate results as evidence-quality checks.
 - For production confidence, run environment-specific integration tests against live Onyx services with pinned commits and known data fixtures.
 - Keep `demo_scenario.report.json` real-vs-synthetic markers in review workflows.
+
+## Current automated suite scope
+
+- **Adapter unit + integration-style tests** run under `integration-adapter/tests/` and cover schema validation, exporter normalization, malformed/missing input handling, artifact generation, launch-gate pass/warn/fail, dashboard reader compatibility, and demo smoke.
+- **Starter Kit dashboard targeted tests** cover read-only API behavior, malformed artifact handling, and local/sibling artifact root resolution.
+

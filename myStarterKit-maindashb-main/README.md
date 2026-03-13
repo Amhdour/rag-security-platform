@@ -197,6 +197,7 @@ Endpoints:
 All mutating methods return `405 method_not_allowed`.
 
 Artifact root is configurable via `DASHBOARD_ARTIFACTS_ROOT`; if unset, the API accepts `INTEGRATION_ADAPTER_ARTIFACTS_ROOT`, then `INTEGRATION_ARTIFACTS_ROOT` as fallbacks for integration deployments.
+When none of those are set, the dashboard defaults to `artifacts/logs`; in the integration workspace it also auto-detects sibling `../integration-adapter/artifacts/logs` when local artifacts are absent.
 
 
 #### Dashboard security defaults and deployment posture
