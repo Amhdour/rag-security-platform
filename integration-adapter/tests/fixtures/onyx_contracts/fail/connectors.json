@@ -1,0 +1,9 @@
+[
+  {
+    "id": "con-gh-01",
+    "name": "github_docs",
+    "status": "active",
+    "source_type": "github",
+    "indexed": true
+  }
+]

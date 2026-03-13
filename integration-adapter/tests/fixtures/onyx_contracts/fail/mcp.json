@@ -1,0 +1,9 @@
+[
+  {
+    "id": "mcp-ops-01",
+    "name": "ops_mcp",
+    "status": "connected",
+    "endpoint": "https://mcp.internal.example",
+    "usage_count": 10
+  }
+]

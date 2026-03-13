@@ -53,9 +53,122 @@ Integration workspace for a **three-plane architecture**:
 ## Upstream provenance and compatibility
 
 - `docs/upstream-provenance.md`
+- `docs/upstream-provenance.lock.json`
 - `docs/compatibility-matrix.md`
 - `docs/maturity-model.md`
 - `docs/threat-model.md`
+- `docs/schema-versioning.md`
+- `docs/exporter-parity.md`
+- `docs/adapter-health.md`
+- `docs/launch-gate-policy.md`
+- `docs/fixture-catalog.md`
+- `docs/environment-profiles.md`
+- `docs/identity-authz-evidence.md`
+- `docs/negative-path-validation.md`
+- `docs/artifact-integrity.md`
+
+**Implemented:** Validate machine-readable provenance lock shape with `make provenance-check` (or `python scripts/validate_upstream_provenance_lock.py`).
+
+**Implemented:** Adapter contract version enforcement is documented in `docs/schema-versioning.md` and enforced during artifact generation and launch-gate evaluation.
+
+**Implemented:** Exporter source-mode metadata and parity coverage are documented in `docs/exporter-parity.md`.
+
+**Implemented:** Adapter operational telemetry and health reporting are documented in `docs/adapter-health.md`.
+
+**Implemented:** Launch-gate evidence-quality policy and fail/warn/pass semantics are documented in `docs/launch-gate-policy.md`.
+
+**Implemented:** Adapter extraction/normalization/gate contracts are validated against real-derived sanitized fixtures documented in `docs/fixture-catalog.md`.
+
+**Implemented:** Environment profiles (`demo`, `dev`, `ci`, `prod_like`) and safeguards are documented in `docs/environment-profiles.md` and enforced by adapter profile validation.
+
+**Implemented:** Identity/authz/delegation evidence model and proven-vs-inferred semantics are documented in `docs/identity-authz-evidence.md`.
+
+**Implemented:** Negative-path security validation coverage and current blind spots are documented in `docs/negative-path-validation.md`.
+
+**Implemented:** Artifact integrity manifest/hash safeguards and verification command are documented in `docs/artifact-integrity.md`.
+
+## Reproducible adapter packaging and execution
+
+**Implemented:** Install adapter tooling with development extras:
+
+```bash
+cd integration-adapter
+python -m pip install -e .[dev]
+```
+
+**Implemented:** Console entrypoints are published via `pyproject.toml`:
+- `integration-adapter-collect`
+- `integration-adapter-generate`
+- `integration-adapter-gate`
+- `integration-adapter-evidence`
+- `integration-adapter-validate`
+- `integration-adapter-ci-smoke`
+
+**Implemented:** Configuration validation command (copy/paste):
+
+```bash
+cd integration-adapter
+python -m integration_adapter.validate_config
+```
+
+**Implemented:** Strict source validation (requires all source env vars to be set and parseable):
+
+```bash
+cd integration-adapter
+python -m integration_adapter.validate_config --strict-sources
+```
+
+**Implemented:** CI-friendly end-to-end command without external services:
+
+```bash
+make adapter-ci
+```
+
+## Operations quickstart (copy/paste)
+
+Validate configuration and profile policy:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.validate_config --profile dev
+```
+
+Generate demo artifacts with deterministic profile:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.generate_artifacts --demo --profile demo --artifacts-root artifacts/logs
+```
+
+Run launch-gate on generated artifacts:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.run_launch_gate --profile demo --artifacts-root artifacts/logs
+```
+
+Verify artifact integrity manifest + hashes:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs
+```
+
+Expected outputs:
+- **Implemented:** `artifact_bundle.contract.json`
+- **Implemented:** `artifact_integrity.manifest.json`
+- **Implemented:** `adapter_health/adapter_run_summary.json`
+- **Implemented:** `audit.jsonl`
+- **Implemented:** `replay/*.replay.json`
+- **Implemented:** `evals/*.jsonl` and `evals/*.summary.json`
+- **Implemented:** `launch_gate/security-readiness-*.json`
+
+Failure conditions (non-zero exit):
+- **Implemented:** invalid configuration in strict validation mode.
+- **Implemented:** schema compatibility blocked.
+- **Implemented:** profile safeguards blocked (for example `prod_like` + synthetic/demo fallback).
+- **Implemented:** launch-gate critical FAIL checks (missing/stale critical evidence, integrity failures).
+- **Implemented:** integrity verifier detects missing files/manifest entries/hash mismatches.
 
 ## Tests
 
@@ -112,15 +225,21 @@ Or directly:
 
 ```bash
 cd integration-adapter
-python -m integration_adapter.evidence_pipeline --demo
+python -m integration_adapter.evidence_pipeline --demo --profile demo
+```
+
+CI smoke (demo, no external services):
+
+```bash
+make adapter-smoke
 ```
 
 Optional artifacts-root override for step commands:
 
 ```bash
 cd integration-adapter
-python -m integration_adapter.generate_artifacts --demo --artifacts-root artifacts/logs
-python -m integration_adapter.run_launch_gate --artifacts-root artifacts/logs
+python -m integration_adapter.generate_artifacts --demo --profile demo --artifacts-root artifacts/logs
+python -m integration_adapter.run_launch_gate --profile demo --artifacts-root artifacts/logs
 ```
 
 Expected outputs under `artifacts/logs`:

@@ -10,13 +10,14 @@ Status labels used in this module:
 Design:
 - raw extraction is read-only and best-effort;
 - normalization is delegated to mapper functions;
-- Implemented: schema validation is enforced at exporter boundaries.
+- Implemented: fallback usage and malformed-source handling are explicit via acquisition diagnostics.
 """
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 import importlib
+import os
 from pathlib import Path
 import sys
 from typing import Any, Iterator
@@ -36,14 +37,24 @@ from integration_adapter.raw_sources import (
     load_jsonl_records,
 )
 
+SOURCE_MODE_LIVE = "live"
+SOURCE_MODE_DB_BACKED = "db_backed"
+SOURCE_MODE_FILE_BACKED = "file_backed"
+SOURCE_MODE_FIXTURE_BACKED = "fixture_backed"
+SOURCE_MODE_SYNTHETIC = "synthetic"
+
 
 def _to_rows(records: list[Any]) -> list[dict[str, Any]]:
     return [record for record in records if isinstance(record, dict)]
 
 
-def _safe_validate_inventory_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _safe_validate_inventory_rows(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
     validated: list[dict[str, Any]] = []
+    dropped_non_dict = 0
     for row in rows:
+        if not isinstance(row, dict):
+            dropped_non_dict += 1
+            continue
         name = str(row.get("name", "unknown"))
         validated.append(
             {
@@ -53,7 +64,7 @@ def _safe_validate_inventory_rows(rows: list[dict[str, Any]]) -> list[dict[str, 
                 **row,
             }
         )
-    return validated
+    return validated, dropped_non_dict
 
 
 def _stringify_enumish(value: Any, *, lowercase: bool = False) -> str:
@@ -75,6 +86,29 @@ def _iso_timestamp(value: Any) -> str | None:
     if isinstance(value, str) and value.strip():
         return value
     return None
+
+
+def _classify_path_source_mode(path: Path) -> str:
+    lowered = str(path).lower()
+    if any(marker in lowered for marker in ("fixture", "fixtures", "sample", "demo")):
+        return SOURCE_MODE_FIXTURE_BACKED
+    return SOURCE_MODE_FILE_BACKED
+
+
+def _db_source_mode() -> str:
+    if os.getenv("INTEGRATION_ADAPTER_DB_SOURCE_MODE_LIVE", "").strip().lower() in {"1", "true", "yes"}:
+        return SOURCE_MODE_LIVE
+    return SOURCE_MODE_DB_BACKED
+
+
+@dataclass(frozen=True)
+class AcquisitionResult:
+    rows: list[dict[str, Any]]
+    source_mode: str
+    source_path: str
+    used_fallback: bool
+    warnings: list[str]
+    errors: list[str]
 
 
 @contextmanager
@@ -103,26 +137,59 @@ def _runtime_import(module: str, attribute: str) -> Any:
 @dataclass
 class _BaseExporter:
     onyx_root: Path = field(default_factory=lambda: Path(__file__).resolve().parents[2] / "onyx-main")
+    last_acquisition: AcquisitionResult | None = field(default=None, init=False)
 
     def _source_path(self, env_name: str, default_key: str) -> Path:
         discovered = discover_default_paths(self.onyx_root)
         return env_path(env_name) or discovered[default_key]
 
-    def _read_json_records(self, path: Path) -> list[dict[str, Any]]:
+    def _read_json_records(self, path: Path) -> tuple[list[dict[str, Any]], list[str], list[str]]:
         if not path.exists():
-            return []
+            return [], [f"source file does not exist: {path}"], []
         try:
-            return load_json_records(path)
-        except SourceReadError:
-            return []
+            rows = load_json_records(path)
+            return rows, [], []
+        except SourceReadError as exc:
+            return [], [], [f"malformed json source at {path}: {exc}"]
 
-    def _read_jsonl_records(self, path: Path) -> list[dict[str, Any]]:
+    def _read_jsonl_records(self, path: Path) -> tuple[list[dict[str, Any]], list[str], list[str]]:
         if not path.exists():
-            return []
+            return [], [f"source file does not exist: {path}"], []
         try:
-            return load_jsonl_records(path)
-        except OSError:
-            return []
+            rows = load_jsonl_records(path)
+            return rows, [], []
+        except (OSError, SourceReadError) as exc:
+            return [], [], [f"malformed jsonl source at {path}: {exc}"]
+
+    def _record_acquisition(self, result: AcquisitionResult) -> None:
+        self.last_acquisition = result
+
+    def _attach_source_metadata(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        source_mode: str,
+        source_path: str,
+        used_fallback: bool,
+        warnings: list[str],
+        errors: list[str],
+        required_fields: list[str],
+    ) -> list[dict[str, Any]]:
+        enriched: list[dict[str, Any]] = []
+        for row in rows:
+            derived_fields = sorted([key for key in required_fields if key not in row or row.get(key) in (None, "")])
+            enriched.append(
+                {
+                    **row,
+                    "source_mode": source_mode,
+                    "source_path": source_path,
+                    "fallback_used": used_fallback,
+                    "source_warnings": list(warnings),
+                    "source_errors": list(errors),
+                    "derived_fields": derived_fields,
+                }
+            )
+        return enriched
 
 
 @dataclass
@@ -148,7 +215,7 @@ class ConnectorInventoryExporter(_BaseExporter):
             return "invalid"
         return sorted(lowered)[0]
 
-    def _read_from_onyx_db(self) -> list[dict[str, Any]]:
+    def _read_from_onyx_db(self) -> tuple[list[dict[str, Any]], list[str], list[str]]:
         try:
             with _with_backend_on_path(self.onyx_root):
                 fetch_connectors = _runtime_import("onyx.db.connector", "fetch_connectors")
@@ -172,18 +239,56 @@ class ConnectorInventoryExporter(_BaseExporter):
                                 "indexed": indexed,
                             }
                         )
-                    return rows
-        except Exception:
-            # UNCONFIRMED: canonical runtime hook not validated in this workspace.
-            # Explicitly fail closed to file-backed extraction when runtime hooks are unavailable.
-            return []
+                    return rows, [], []
+        except Exception as exc:
+            return [], [], [f"db extraction failed for connectors: {exc}"]
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_CONNECTORS_JSON", "connectors")
-        rows = self._read_json_records(path)
+        file_rows, file_warnings, file_errors = self._read_json_records(path)
+        source_mode = _classify_path_source_mode(path)
+        used_fallback = False
+
+        rows = file_rows
+        warnings = list(file_warnings)
+        errors = list(file_errors)
+        source_path = str(path)
+
         if not rows:
-            rows = self._read_from_onyx_db()
-        normalized = map_connector_inventory(_safe_validate_inventory_rows(_to_rows(rows)))
+            db_rows, db_warnings, db_errors = self._read_from_onyx_db()
+            warnings.extend(db_warnings)
+            errors.extend(db_errors)
+            if db_rows:
+                rows = db_rows
+                source_mode = _db_source_mode()
+                source_path = "onyx.db.connector.fetch_connectors"
+                used_fallback = True
+
+        valid_rows, dropped = _safe_validate_inventory_rows(_to_rows(rows))
+        if dropped:
+            warnings.append(f"dropped non-dict connector rows: {dropped}")
+
+        enriched = self._attach_source_metadata(
+            valid_rows,
+            source_mode=source_mode if valid_rows else SOURCE_MODE_SYNTHETIC,
+            source_path=source_path,
+            used_fallback=used_fallback,
+            warnings=warnings,
+            errors=errors,
+            required_fields=["id", "name", "status", "source_type", "indexed"],
+        )
+        self._record_acquisition(
+            AcquisitionResult(
+                rows=enriched,
+                source_mode=source_mode if enriched else SOURCE_MODE_SYNTHETIC,
+                source_path=source_path,
+                used_fallback=used_fallback,
+                warnings=warnings,
+                errors=errors,
+            )
+        )
+
+        normalized = map_connector_inventory(enriched)
         return [
             {
                 "id": row.record_id,
@@ -191,6 +296,11 @@ class ConnectorInventoryExporter(_BaseExporter):
                 "status": row.status,
                 "source_type": row.metadata.get("source_type", "unknown"),
                 "indexed": bool(row.metadata.get("indexed", False)),
+                "source_mode": row.metadata.get("source_mode", SOURCE_MODE_SYNTHETIC),
+                "fallback_used": bool(row.metadata.get("fallback_used", False)),
+                "source_warnings": row.metadata.get("source_warnings", []),
+                "source_errors": row.metadata.get("source_errors", []),
+                "derived_fields": row.metadata.get("derived_fields", []),
             }
             for row in normalized
         ]
@@ -216,7 +326,7 @@ class ToolInventoryExporter(_BaseExporter):
             return "low"
         return "unspecified"
 
-    def _read_from_onyx_db(self) -> list[dict[str, Any]]:
+    def _read_from_onyx_db(self) -> tuple[list[dict[str, Any]], list[str], list[str]]:
         try:
             with _with_backend_on_path(self.onyx_root):
                 get_session = _runtime_import("onyx.db.engine.sql_engine", "get_session")
@@ -230,24 +340,60 @@ class ToolInventoryExporter(_BaseExporter):
                         rows.append(
                             {
                                 "id": getattr(tool, "id", "unknown"),
-                                "name": getattr(tool, "display_name", None)
-                                or getattr(tool, "name", "unknown_tool"),
+                                "name": getattr(tool, "display_name", None) or getattr(tool, "name", "unknown_tool"),
                                 "status": "enabled" if enabled else "disabled",
                                 "risk_tier": self._derive_risk_tier(tool),
                                 "enabled": enabled,
                             }
                         )
-                    return rows
-        except Exception:
-            # UNCONFIRMED: canonical runtime hook not validated in this workspace.
-            return []
+                    return rows, [], []
+        except Exception as exc:
+            return [], [], [f"db extraction failed for tools: {exc}"]
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_TOOLS_JSON", "tools")
-        rows = self._read_json_records(path)
+        file_rows, file_warnings, file_errors = self._read_json_records(path)
+        rows = file_rows
+        warnings = list(file_warnings)
+        errors = list(file_errors)
+        source_mode = _classify_path_source_mode(path)
+        source_path = str(path)
+        used_fallback = False
+
         if not rows:
-            rows = self._read_from_onyx_db()
-        normalized = map_tool_inventory(_safe_validate_inventory_rows(_to_rows(rows)))
+            db_rows, db_warnings, db_errors = self._read_from_onyx_db()
+            warnings.extend(db_warnings)
+            errors.extend(db_errors)
+            if db_rows:
+                rows = db_rows
+                source_mode = _db_source_mode()
+                source_path = "onyx.db.tools.get_tools"
+                used_fallback = True
+
+        valid_rows, dropped = _safe_validate_inventory_rows(_to_rows(rows))
+        if dropped:
+            warnings.append(f"dropped non-dict tool rows: {dropped}")
+        enriched = self._attach_source_metadata(
+            valid_rows,
+            source_mode=source_mode if valid_rows else SOURCE_MODE_SYNTHETIC,
+            source_path=source_path,
+            used_fallback=used_fallback,
+            warnings=warnings,
+            errors=errors,
+            required_fields=["id", "name", "status", "risk_tier", "enabled"],
+        )
+        self._record_acquisition(
+            AcquisitionResult(
+                rows=enriched,
+                source_mode=source_mode if enriched else SOURCE_MODE_SYNTHETIC,
+                source_path=source_path,
+                used_fallback=used_fallback,
+                warnings=warnings,
+                errors=errors,
+            )
+        )
+
+        normalized = map_tool_inventory(enriched)
         return [
             {
                 "id": row.record_id,
@@ -255,6 +401,11 @@ class ToolInventoryExporter(_BaseExporter):
                 "status": row.status,
                 "risk_tier": row.metadata.get("risk_tier", "unspecified"),
                 "enabled": bool(row.metadata.get("enabled", False)),
+                "source_mode": row.metadata.get("source_mode", SOURCE_MODE_SYNTHETIC),
+                "fallback_used": bool(row.metadata.get("fallback_used", False)),
+                "source_warnings": row.metadata.get("source_warnings", []),
+                "source_errors": row.metadata.get("source_errors", []),
+                "derived_fields": row.metadata.get("derived_fields", []),
             }
             for row in normalized
         ]
@@ -269,7 +420,7 @@ class MCPInventoryExporter(_BaseExporter):
     Unconfirmed: canonical runtime MCP usage semantics across deployments.
     """
 
-    def _read_from_onyx_db(self) -> list[dict[str, Any]]:
+    def _read_from_onyx_db(self) -> tuple[list[dict[str, Any]], list[str], list[str]]:
         try:
             with _with_backend_on_path(self.onyx_root):
                 get_session = _runtime_import("onyx.db.engine.sql_engine", "get_session")
@@ -297,17 +448,54 @@ class MCPInventoryExporter(_BaseExporter):
                                 "usage_count": _safe_int(usage_count, 0),
                             }
                         )
-                    return rows
-        except Exception:
-            # UNCONFIRMED: canonical runtime hook not validated in this workspace.
-            return []
+                    return rows, [], []
+        except Exception as exc:
+            return [], [], [f"db extraction failed for mcp: {exc}"]
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_MCP_JSON", "mcp_servers")
-        rows = self._read_json_records(path)
+        file_rows, file_warnings, file_errors = self._read_json_records(path)
+        rows = file_rows
+        warnings = list(file_warnings)
+        errors = list(file_errors)
+        source_mode = _classify_path_source_mode(path)
+        source_path = str(path)
+        used_fallback = False
+
         if not rows:
-            rows = self._read_from_onyx_db()
-        normalized = map_mcp_inventory(_safe_validate_inventory_rows(_to_rows(rows)))
+            db_rows, db_warnings, db_errors = self._read_from_onyx_db()
+            warnings.extend(db_warnings)
+            errors.extend(db_errors)
+            if db_rows:
+                rows = db_rows
+                source_mode = _db_source_mode()
+                source_path = "onyx.db.mcp.get_all_mcp_servers"
+                used_fallback = True
+
+        valid_rows, dropped = _safe_validate_inventory_rows(_to_rows(rows))
+        if dropped:
+            warnings.append(f"dropped non-dict mcp rows: {dropped}")
+        enriched = self._attach_source_metadata(
+            valid_rows,
+            source_mode=source_mode if valid_rows else SOURCE_MODE_SYNTHETIC,
+            source_path=source_path,
+            used_fallback=used_fallback,
+            warnings=warnings,
+            errors=errors,
+            required_fields=["id", "name", "status", "endpoint", "usage_count"],
+        )
+        self._record_acquisition(
+            AcquisitionResult(
+                rows=enriched,
+                source_mode=source_mode if enriched else SOURCE_MODE_SYNTHETIC,
+                source_path=source_path,
+                used_fallback=used_fallback,
+                warnings=warnings,
+                errors=errors,
+            )
+        )
+
+        normalized = map_mcp_inventory(enriched)
         return [
             {
                 "id": row.record_id,
@@ -315,6 +503,11 @@ class MCPInventoryExporter(_BaseExporter):
                 "status": row.status,
                 "endpoint": row.metadata.get("endpoint", ""),
                 "usage_count": int(row.metadata.get("usage_count", 0)),
+                "source_mode": row.metadata.get("source_mode", SOURCE_MODE_SYNTHETIC),
+                "fallback_used": bool(row.metadata.get("fallback_used", False)),
+                "source_warnings": row.metadata.get("source_warnings", []),
+                "source_errors": row.metadata.get("source_errors", []),
+                "derived_fields": row.metadata.get("derived_fields", []),
             }
             for row in normalized
         ]
@@ -329,7 +522,7 @@ class EvalResultsExporter(_BaseExporter):
     Unconfirmed: canonical multi-provider Onyx eval output compatibility for all fields.
     """
 
-    def _read_from_onyx_runtime_config(self) -> list[dict[str, Any]]:
+    def _read_from_onyx_runtime_config(self) -> tuple[list[dict[str, Any]], list[str], list[str]]:
         """Best-effort read of eval metadata from Onyx runtime config.
 
         Unconfirmed: canonical runtime hook not validated in this workspace.
@@ -340,8 +533,8 @@ class EvalResultsExporter(_BaseExporter):
             with _with_backend_on_path(self.onyx_root):
                 dataset_names = _runtime_import("onyx.configs.app_configs", "SCHEDULED_EVAL_DATASET_NAMES")
                 project_name = _runtime_import("onyx.configs.app_configs", "SCHEDULED_EVAL_PROJECT")
-        except Exception:
-            return []
+        except Exception as exc:
+            return [], [], [f"runtime config extraction failed for evals: {exc}"]
 
         rows: list[dict[str, Any]] = []
         for index, dataset in enumerate(dataset_names or [], start=1):
@@ -358,14 +551,53 @@ class EvalResultsExporter(_BaseExporter):
                     "score": 0,
                 }
             )
-        return rows
+        return rows, [], []
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_EVALS_JSON", "evals")
-        rows = self._read_json_records(path)
+        file_rows, file_warnings, file_errors = self._read_json_records(path)
+        rows = file_rows
+        warnings = list(file_warnings)
+        errors = list(file_errors)
+        source_mode = _classify_path_source_mode(path)
+        source_path = str(path)
+        used_fallback = False
+
         if not rows:
-            rows = self._read_from_onyx_runtime_config()
-        normalized = map_eval_inventory(_safe_validate_inventory_rows(_to_rows(rows)))
+            cfg_rows, cfg_warnings, cfg_errors = self._read_from_onyx_runtime_config()
+            warnings.extend(cfg_warnings)
+            errors.extend(cfg_errors)
+            if cfg_rows:
+                rows = cfg_rows
+                source_mode = SOURCE_MODE_DB_BACKED
+                source_path = "onyx.configs.app_configs"
+                used_fallback = True
+
+        valid_rows, dropped = _safe_validate_inventory_rows(_to_rows(rows))
+        if dropped:
+            warnings.append(f"dropped non-dict eval rows: {dropped}")
+
+        enriched = self._attach_source_metadata(
+            valid_rows,
+            source_mode=source_mode if valid_rows else SOURCE_MODE_SYNTHETIC,
+            source_path=source_path,
+            used_fallback=used_fallback,
+            warnings=warnings,
+            errors=errors,
+            required_fields=["id", "suite", "passed", "score", "scenario"],
+        )
+        self._record_acquisition(
+            AcquisitionResult(
+                rows=enriched,
+                source_mode=source_mode if enriched else SOURCE_MODE_SYNTHETIC,
+                source_path=source_path,
+                used_fallback=used_fallback,
+                warnings=warnings,
+                errors=errors,
+            )
+        )
+
+        normalized = map_eval_inventory(enriched)
         return [
             {
                 "id": row.record_id,
@@ -373,6 +605,11 @@ class EvalResultsExporter(_BaseExporter):
                 "passed": row.status == "pass",
                 "score": row.metadata.get("score", 0),
                 "scenario": row.metadata.get("scenario", "unspecified"),
+                "source_mode": row.metadata.get("source_mode", SOURCE_MODE_SYNTHETIC),
+                "fallback_used": bool(row.metadata.get("fallback_used", False)),
+                "source_warnings": row.metadata.get("source_warnings", []),
+                "source_errors": row.metadata.get("source_errors", []),
+                "derived_fields": row.metadata.get("derived_fields", []),
             }
             for row in normalized
         ]
@@ -387,7 +624,7 @@ class RuntimeEventsExporter(_BaseExporter):
     Unconfirmed: canonical Onyx lifecycle/retrieval/tool decision stream parity across deployments.
     """
 
-    def _read_from_onyx_db(self) -> list[dict[str, Any]]:
+    def _read_from_onyx_db(self) -> tuple[list[dict[str, Any]], list[str], list[str]]:
         try:
             with _with_backend_on_path(self.onyx_root):
                 get_session = _runtime_import("onyx.db.engine.sql_engine", "get_session")
@@ -454,22 +691,68 @@ class RuntimeEventsExporter(_BaseExporter):
                             },
                         }
                     )
-                return rows
-        except Exception:
-            # UNCONFIRMED: canonical runtime hook not validated in this workspace.
-            return []
+                return rows, [], []
+        except Exception as exc:
+            return [], [], [f"db extraction failed for runtime events: {exc}"]
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_RUNTIME_EVENTS_JSONL", "runtime_events")
-        rows = self._read_jsonl_records(path)
+        file_rows, file_warnings, file_errors = self._read_jsonl_records(path)
+        rows = file_rows
+        warnings = list(file_warnings)
+        errors = list(file_errors)
+        source_mode = _classify_path_source_mode(path)
+        source_path = str(path)
+        used_fallback = False
+
         if not rows:
-            rows = self._read_from_onyx_db()
-        events = [map_runtime_event(row) for row in rows if isinstance(row, dict)]
+            db_rows, db_warnings, db_errors = self._read_from_onyx_db()
+            warnings.extend(db_warnings)
+            errors.extend(db_errors)
+            if db_rows:
+                rows = db_rows
+                source_mode = _db_source_mode()
+                source_path = "onyx.db.models.ChatSession/ToolCall"
+                used_fallback = True
+
+        valid_dict_rows = _to_rows(rows)
+        dropped = len(rows) - len(valid_dict_rows)
+        if dropped:
+            warnings.append(f"dropped non-dict runtime event rows: {dropped}")
+
+        events = []
+        invalid_events = 0
+        for raw_row in valid_dict_rows:
+            payload = dict(raw_row)
+            event_payload = dict(payload.get("event_payload") or {})
+            event_payload["source_mode"] = source_mode if valid_dict_rows else SOURCE_MODE_SYNTHETIC
+            event_payload["source_path"] = source_path
+            event_payload["fallback_used"] = used_fallback
+            event_payload["source_warnings"] = list(warnings)
+            event_payload["source_errors"] = list(errors)
+            payload["event_payload"] = event_payload
+            events.append(map_runtime_event(payload))
+
         valid: list[dict[str, Any]] = []
         for event in events:
             try:
                 payload = event.to_dict()
             except ValueError:
+                invalid_events += 1
                 continue
             valid.append(payload)
+
+        if invalid_events:
+            warnings.append(f"dropped invalid mapped runtime events: {invalid_events}")
+
+        self._record_acquisition(
+            AcquisitionResult(
+                rows=valid,
+                source_mode=source_mode if valid else SOURCE_MODE_SYNTHETIC,
+                source_path=source_path,
+                used_fallback=used_fallback,
+                warnings=warnings,
+                errors=errors,
+            )
+        )
         return valid

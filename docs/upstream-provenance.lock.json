@@ -1,0 +1,78 @@
+{
+  "lock_version": "1.0",
+  "workspace": {
+    "repository": "rag-security-platform-main",
+    "tracked_at_workspace_commit": "a90fc07c966a38ed9d59395e4414bc093ec0b123",
+    "generated_by": "manual-maintainer-update",
+    "notes": "Machine-readable upstream provenance lock for three-plane integration workspace."
+  },
+  "components": [
+    {
+      "component_id": "onyx-runtime-plane",
+      "local_path": "onyx-main",
+      "role": "runtime_execution",
+      "upstream": {
+        "repo_name": "onyx",
+        "expected_remote_url": "https://github.com/onyx-dot-app/onyx",
+        "expected_ref": "main",
+        "pinned_commit": null,
+        "pin_status": "UNCONFIRMED"
+      },
+      "local_snapshot": {
+        "git_metadata_available": false,
+        "snapshot_status": "LOCAL_SNAPSHOT_ONLY",
+        "unavailable_reason": "Nested git metadata (.git) is not present for onyx-main in this workspace checkout.",
+        "verification_commands": [
+          "cd onyx-main && git remote -v",
+          "cd onyx-main && git rev-parse --abbrev-ref HEAD",
+          "cd onyx-main && git rev-parse HEAD"
+        ],
+        "maintainer_todo": "Populate upstream.pinned_commit and update pin_status to IMPLEMENTED after verifying remote URL and commit from nested repository metadata."
+      }
+    },
+    {
+      "component_id": "starter-kit-governance-plane",
+      "local_path": "myStarterKit-maindashb-main",
+      "role": "governance_dashboard_read_only",
+      "upstream": {
+        "repo_name": "secure-support-agent-starter-kit",
+        "expected_remote_url": null,
+        "expected_ref": null,
+        "pinned_commit": null,
+        "pin_status": "UNCONFIRMED"
+      },
+      "local_snapshot": {
+        "git_metadata_available": false,
+        "snapshot_status": "LOCAL_SNAPSHOT_ONLY",
+        "unavailable_reason": "Nested git metadata (.git) is not present for myStarterKit-maindashb-main in this workspace checkout.",
+        "verification_commands": [
+          "cd myStarterKit-maindashb-main && git remote -v",
+          "cd myStarterKit-maindashb-main && git rev-parse --abbrev-ref HEAD",
+          "cd myStarterKit-maindashb-main && git rev-parse HEAD"
+        ],
+        "maintainer_todo": "Discover canonical upstream remote URL and branch/tag from nested repository metadata, then populate upstream.expected_remote_url, upstream.expected_ref, and upstream.pinned_commit."
+      }
+    },
+    {
+      "component_id": "integration-adapter-plane",
+      "local_path": "integration-adapter",
+      "role": "translation_evidence",
+      "upstream": {
+        "repo_name": "integration-adapter",
+        "expected_remote_url": "workspace-local",
+        "expected_ref": "workspace-main-branch",
+        "pinned_commit": "a90fc07c966a38ed9d59395e4414bc093ec0b123",
+        "pin_status": "IMPLEMENTED"
+      },
+      "local_snapshot": {
+        "git_metadata_available": true,
+        "snapshot_status": "WORKSPACE_TRACKED",
+        "unavailable_reason": null,
+        "verification_commands": [
+          "git rev-parse HEAD"
+        ],
+        "maintainer_todo": "When adapter contracts change, refresh compatibility docs and rerun adapter test suite before updating this lock."
+      }
+    }
+  ]
+}

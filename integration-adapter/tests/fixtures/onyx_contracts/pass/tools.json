@@ -1,0 +1,16 @@
+[
+  {
+    "id": "tool-search",
+    "name": "search",
+    "status": "enabled",
+    "risk_tier": "low",
+    "enabled": true
+  },
+  {
+    "id": "tool-ticket-read",
+    "name": "ticket_reader",
+    "status": "enabled",
+    "risk_tier": "medium",
+    "enabled": true
+  }
+]

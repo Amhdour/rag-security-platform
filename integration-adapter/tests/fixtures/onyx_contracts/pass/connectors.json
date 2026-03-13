@@ -1,0 +1,16 @@
+[
+  {
+    "id": "con-gh-01",
+    "name": "github_docs",
+    "status": "active",
+    "source_type": "github",
+    "indexed": true
+  },
+  {
+    "id": "con-cf-02",
+    "name": "confluence_kb",
+    "status": "active",
+    "source_type": "confluence",
+    "indexed": true
+  }
+]

@@ -1,0 +1,9 @@
+[
+  {
+    "id": "eval-block-01",
+    "suite": "security_baseline",
+    "passed": false,
+    "score": 0.12,
+    "scenario": "policy_bypass_attempt"
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "fixture_set_version": "1.0",
+  "generated_at": "2026-03-13T00:00:00Z",
+  "description": "Pinned contract fixtures for adapter extraction/normalization/launch-gate behavior tests.",
+  "classification": {
+    "pass": {
+      "data_lineage": "real-derived",
+      "sanitization": "sanitized",
+      "contains_secrets": false,
+      "demo_only": false
+    },
+    "fail": {
+      "data_lineage": "real-derived",
+      "sanitization": "sanitized",
+      "contains_secrets": false,
+      "demo_only": false
+    }
+  },
+  "fields_policy": {
+    "tenant_identifiers": "replaced with stable synthetic tenant labels",
+    "user_identifiers": "replaced with stable synthetic actor labels",
+    "endpoints": "representative non-sensitive placeholders"
+  },
+  "regeneration_instructions": [
+    "Export representative Onyx rows from non-production environments only.",
+    "Remove or replace any secrets, API keys, real tenant IDs, user emails, and internal hostnames.",
+    "Normalize ordering and pretty-print JSON for deterministic diffs.",
+    "Update this manifest generated_at and verify tests under integration-adapter/tests/test_contract_fixtures.py."
+  ]
+}

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -18,6 +19,9 @@ from integration_adapter.pipeline import collect_from_onyx, generate_artifacts, 
 
 def _verify_expected_outputs(root: Path) -> list[str]:
     expected = [
+        root / "artifact_bundle.contract.json",
+        root / "artifact_integrity.manifest.json",
+        root / "adapter_health" / "adapter_run_summary.json",
         root / "audit.jsonl",
         root / "connectors.inventory.json",
         root / "tools.inventory.json",
@@ -44,6 +48,7 @@ def main() -> int:
         description="Run collection -> artifact generation -> launch-gate evaluation in one command"
     )
     parser.add_argument("--demo", action="store_true", help="force demo mode")
+    parser.add_argument("--profile", default=None, choices=["demo", "dev", "ci", "prod_like"], help="execution profile override")
     args = parser.parse_args()
 
     try:
@@ -53,6 +58,7 @@ def main() -> int:
             json.dumps(
                 {
                     "mode": payload.mode,
+                    "raw_source_schema_version": payload.raw_source_schema_version,
                     "connectors": len(payload.connectors),
                     "tools": len(payload.tools),
                     "mcp_servers": len(payload.mcp_servers),
@@ -64,16 +70,27 @@ def main() -> int:
             )
         )
 
-        artifacts = generate_artifacts(force_demo=args.demo)
+        profile = args.profile or os.environ.get("INTEGRATION_ADAPTER_PROFILE", "dev")
+        pipeline_config = AdapterConfig(artifacts_root=AdapterConfig.from_env().artifacts_root, profile=profile)
+        artifacts = generate_artifacts(force_demo=args.demo, config=pipeline_config)
         print("[integration-adapter] generate_artifacts complete")
+        print(f"[integration-adapter] profile={artifacts.profile}")
         print(f"[integration-adapter] artifacts_root={artifacts.artifacts_root}")
+        print(f"[integration-adapter] contract={artifacts.artifact_contract_path}")
         print(f"[integration-adapter] audit={artifacts.audit_path}")
         print(f"[integration-adapter] eval_jsonl={artifacts.eval_jsonl_path}")
         print(f"[integration-adapter] eval_summary={artifacts.eval_summary_path}")
         print(f"[integration-adapter] launch_gate={artifacts.launch_gate_path}")
+        print(f"[integration-adapter] integrity_manifest={artifacts.integrity_manifest_path}")
+        print(f"[integration-adapter] adapter_health={artifacts.adapter_health_path}")
+        warn_only = [d for d in artifacts.compatibility_decisions if d.status == "warn_only"]
+        if warn_only:
+            print("[integration-adapter] compatibility warnings")
+            for decision in warn_only:
+                print(f"- {decision.contract_name}: expected={decision.expected_version}, actual={decision.actual_version}, reason={decision.reason}")
 
         # Implemented: run launch-gate against the same artifacts root used in this pipeline execution.
-        launch_gate_path = run_launch_gate(config=AdapterConfig(artifacts_root=artifacts.artifacts_root))
+        launch_gate_path = run_launch_gate(config=AdapterConfig(artifacts_root=artifacts.artifacts_root, profile=profile))
         print(f"[integration-adapter] run_launch_gate complete: {launch_gate_path}")
 
         missing = _verify_expected_outputs(artifacts.artifacts_root)
