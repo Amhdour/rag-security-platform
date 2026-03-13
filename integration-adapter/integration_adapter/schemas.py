@@ -18,6 +18,19 @@ REQUIRED_EVENT_TYPES = {
     "error.event",
 }
 
+IDENTITY_AUTHZ_SOURCE_VALUES = {"sourced", "derived", "unavailable"}
+IDENTITY_AUTHZ_SOURCE_KEYS = {
+    "actor_id",
+    "tenant_id",
+    "session_id",
+    "persona_or_agent_id",
+    "tool_invocation_id",
+    "delegation_chain",
+    "decision_basis",
+    "resource_scope",
+    "authz_result",
+}
+
 
 @dataclass
 class NormalizedAuditEvent:
@@ -66,6 +79,13 @@ class NormalizedAuditEvent:
             raise ValueError("delegation_chain must be a list")
         if any(not isinstance(item, str) for item in self.delegation_chain):
             raise ValueError("delegation_chain must contain only strings")
+        for key, value in self.identity_authz_field_sources.items():
+            if key not in IDENTITY_AUTHZ_SOURCE_KEYS:
+                raise ValueError(f"identity_authz_field_sources contains unsupported key: {key}")
+            if value not in IDENTITY_AUTHZ_SOURCE_VALUES:
+                raise ValueError(
+                    f"identity_authz_field_sources[{key}] must be one of {sorted(IDENTITY_AUTHZ_SOURCE_VALUES)}"
+                )
 
     def to_dict(self) -> dict[str, Any]:
         self.validate()

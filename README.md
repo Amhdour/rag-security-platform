@@ -10,10 +10,10 @@ Integration workspace for a **three-plane architecture**:
 
 ## Repository purpose
 
-1. Preserve upstream boundaries and responsibilities.
-2. Add interoperability in `integration-adapter/`.
-3. Produce artifact evidence consumable by governance/launch-gate workflows.
-4. Keep dashboard behavior read-only and artifact-driven.
+1. **Implemented:** Preserve upstream boundaries and responsibilities.
+2. **Implemented:** Add interoperability in `integration-adapter/`.
+3. **Implemented:** Produce artifact evidence consumable by governance/launch-gate workflows.
+4. **Implemented:** Keep dashboard behavior read-only and artifact-driven.
 
 **Implemented:** See `docs/integration-blueprint.md` for architecture notes and constraints.
 
@@ -45,10 +45,10 @@ Integration workspace for a **three-plane architecture**:
 
 ## Top-level folder guide
 
-- `onyx-main/`: upstream Onyx runtime code.
-- `myStarterKit-maindashb-main/`: upstream governance/dashboard code.
-- `integration-adapter/`: additive translation and evidence tooling.
-- `docs/`: workspace architecture/provenance/compatibility/maturity/demo/testing docs.
+- **Implemented:** `onyx-main/` remains upstream Onyx runtime code.
+- **Implemented:** `myStarterKit-maindashb-main/` remains upstream governance/dashboard code.
+- **Implemented:** `integration-adapter/` remains additive translation and evidence tooling.
+- **Implemented:** `docs/` contains workspace architecture/provenance/compatibility/maturity/demo/testing docs.
 
 ## Upstream provenance and compatibility
 
@@ -94,6 +94,12 @@ One-command pipeline (repo root):
 make evidence
 ```
 
+Step-by-step pipeline (repo root):
+
+```bash
+make evidence-step
+```
+
 **Implemented:** This executes collection, artifact generation, launch-gate evaluation, verifies required output files, and returns non-zero on fatal pipeline failures.
 
 Demo mode:
@@ -109,11 +115,19 @@ cd integration-adapter
 python -m integration_adapter.evidence_pipeline --demo
 ```
 
+Optional artifacts-root override for step commands:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.generate_artifacts --demo --artifacts-root artifacts/logs
+python -m integration_adapter.run_launch_gate --artifacts-root artifacts/logs
+```
+
 Expected outputs under `artifacts/logs`:
-- `audit.jsonl`
-- `replay/*.replay.json`
-- `evals/*.jsonl` and `evals/*.summary.json`
-- `launch_gate/*.json` and `launch_gate/*.md`
+- **Implemented:** `audit.jsonl`
+- **Implemented:** `replay/*.replay.json`
+- **Implemented:** `evals/*.jsonl` and `evals/*.summary.json`
+- **Implemented:** `launch_gate/*.json` and `launch_gate/*.md`
 
 > Launch-gate results here are **evidence-quality outputs**, not standalone proof of runtime control enforcement.
 >
@@ -124,6 +138,8 @@ Expected outputs under `artifacts/logs`:
 > - `control_assessment.proven`
 >
 > `control_assessment.proven` remains `false` in this workspace unless runtime enforcement is independently validated.
+>
+> Blockers (fail) and residual risks (warn) are emitted separately in both machine-readable and markdown launch-gate outputs.
 
 ## End-to-end demo scenario
 
@@ -142,15 +158,17 @@ python -m integration_adapter.demo_scenario
 
 **Partially Implemented:** This demo executes the full story (runtime request -> retrieval -> tool decision -> MCP usage representation -> eval evidence -> artifacts -> launch-gate -> dashboard read verification), preferring real extraction and using synthetic schema-valid fallbacks only where required.
 
+**Implemented:** The demo report includes per-domain real/synthetic labels, step-level provenance, and `event_type_coverage` for key runtime event types.
+
 After running, inspect:
-- `integration-adapter/artifacts/logs/demo_scenario.report.json`
-- `integration-adapter/artifacts/logs/launch_gate/security-readiness-<STAMP>.json`
+- **Implemented:** `integration-adapter/artifacts/logs/demo_scenario.report.json`
+- **Implemented:** `integration-adapter/artifacts/logs/launch_gate/security-readiness-<STAMP>.json`
 
 **Implemented:** See `docs/demo-scenario.md` for exact steps, output expectations, and remaining realism gaps.
 
 ## Testing blind spots
 
-Known runtime assumptions that are not fully testable in this workspace are tracked in:
+**Unconfirmed:** Known runtime assumptions that are not fully testable in this workspace are tracked in:
 - `docs/testing-blind-spots.md`
 
 

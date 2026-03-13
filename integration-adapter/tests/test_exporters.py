@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 from types import SimpleNamespace
 
@@ -213,6 +214,107 @@ def test_runtime_events_exporter_db_fallback_path(monkeypatch) -> None:
     )
     rows = exporter.export()
     assert rows and rows[0]["event_type"] == "tool.execution_attempt"
+
+
+def test_eval_results_exporter_runtime_config_fallback(monkeypatch) -> None:
+    exporter = EvalResultsExporter()
+
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: [])
+
+    def _runtime_import(module: str, attribute: str):
+        if module == "onyx.configs.app_configs" and attribute == "SCHEDULED_EVAL_DATASET_NAMES":
+            return ["security-baseline", "policy-stress"]
+        if module == "onyx.configs.app_configs" and attribute == "SCHEDULED_EVAL_PROJECT":
+            return "onyx"
+        raise ImportError(module)
+
+    @contextmanager
+    def _noop_backend_path(_onyx_root):
+        yield
+
+    monkeypatch.setattr("integration_adapter.exporters._runtime_import", _runtime_import)
+    monkeypatch.setattr("integration_adapter.exporters._with_backend_on_path", _noop_backend_path)
+
+    rows = exporter.export()
+
+    assert len(rows) == 2
+    assert rows[0]["suite"] == "onyx:security-baseline"
+    assert rows[0]["scenario"] == "security-baseline"
+    assert rows[0]["passed"] is False
+
+
+def test_runtime_events_exporter_db_includes_chat_session_lifecycle(monkeypatch) -> None:
+    exporter = RuntimeEventsExporter()
+    monkeypatch.setattr(exporter, "_read_jsonl_records", lambda _path: [])
+
+    chat_session = SimpleNamespace(id="chat-1", user_id="user-1", time_created="2026-01-01T00:00:00Z", time_updated="2026-01-01T00:00:05Z")
+    tool_call = SimpleNamespace(id=5, chat_session_id="chat-1", tool_id=7, tool_call_id="call-7")
+    tool = SimpleNamespace(id=7, name="search")
+
+    class _FakeQuery:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def order_by(self, *_args, **_kwargs):
+            return self
+
+        def limit(self, *_args, **_kwargs):
+            return self
+
+        def all(self):
+            return self._rows
+
+    class _FakeSession:
+        def query(self, model):
+            if model is _ChatSession:
+                return _FakeQuery([chat_session])
+            if model is _ToolCall:
+                return _FakeQuery([tool_call])
+            if model is _Tool:
+                return _FakeQuery([tool])
+            return _FakeQuery([])
+
+    @contextmanager
+    def _fake_get_session():
+        yield _FakeSession()
+
+    class _SortableField:
+        def desc(self):
+            return self
+
+    class _ChatSession:
+        time_updated = _SortableField()
+
+    class _ToolCall:
+        id = _SortableField()
+
+    class _Tool:
+        pass
+
+    def _runtime_import(module: str, attribute: str):
+        if module == "onyx.db.engine.sql_engine" and attribute == "get_session":
+            return _fake_get_session
+        if module == "onyx.db.models" and attribute == "ChatSession":
+            return _ChatSession
+        if module == "onyx.db.models" and attribute == "ToolCall":
+            return _ToolCall
+        if module == "onyx.db.models" and attribute == "Tool":
+            return _Tool
+        raise ImportError(module)
+
+    @contextmanager
+    def _noop_backend_path(_onyx_root):
+        yield
+
+    monkeypatch.setattr("integration_adapter.exporters._runtime_import", _runtime_import)
+    monkeypatch.setattr("integration_adapter.exporters._with_backend_on_path", _noop_backend_path)
+
+    rows = exporter.export()
+
+    event_types = {row["event_type"] for row in rows}
+    assert "request.start" in event_types
+    assert "request.end" in event_types
+    assert "tool.execution_attempt" in event_types
 
 
 def test_exporters_gracefully_handle_missing_files(monkeypatch) -> None:

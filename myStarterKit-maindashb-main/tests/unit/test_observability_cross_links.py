@@ -95,3 +95,14 @@ def test_launch_gate_related_links_and_overview_connected_summary(tmp_path: Path
     assert connected.get("traces_with_replay_exact", 0) >= 1
     assert connected.get("traces_with_eval_exact", 0) >= 1
     assert connected.get("traces_with_eval_inferred", 0) >= 1
+
+
+def test_cross_links_use_configured_artifacts_root_for_replay_lookup(tmp_path: Path) -> None:
+    custom_root = tmp_path / "integration-adapter-artifacts"
+    _seed(custom_root)
+
+    # Ensure default local artifact path is absent so replay lookup must use configured root.
+    service = DashboardService(tmp_path, artifacts_root=custom_root / "artifacts" / "logs")
+    trace1 = service.get_trace("trace-1")
+    assert trace1 is not None
+    assert trace1["cross_links"]["replay"]["correlation"] == "exact"

@@ -68,6 +68,9 @@ def test_launch_gate_evaluator_pass(tmp_path) -> None:
     assert payload["evidence_status"]["present"] is True
     assert payload["evidence_status"]["incomplete"] is False
     assert payload["control_assessment"]["proven"] is False
+    assert payload["control_assessment"]["not_proven"] is True
+    assert payload["decision_breakdown"]["blocker_count"] == 0
+    assert payload["decision_breakdown"]["warning_count"] == 0
     assert "control_proven: **False**" in md_path.read_text(encoding="utf-8")
 
 
@@ -88,6 +91,9 @@ def test_launch_gate_evaluator_warn(tmp_path) -> None:
     assert result.status == CONDITIONAL_GO
     assert result.residual_risks
     assert any("tool_inventory_classified" in item for item in result.residual_risks)
+
+    _, md_path = evaluator.write_outputs(result)
+    assert "Residual risks (warn)" in md_path.read_text(encoding="utf-8")
 
 
 def test_launch_gate_evaluator_fail_on_critical_eval(tmp_path) -> None:
@@ -111,6 +117,9 @@ def test_launch_gate_evaluator_fail_on_critical_eval(tmp_path) -> None:
     assert result.blockers
     assert json_path.is_file()
     assert md_path.is_file()
+
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["decision_breakdown"]["blocker_count"] >= 1
 
 
 def test_launch_gate_evaluator_fail_closed_on_schema_malformed(tmp_path) -> None:

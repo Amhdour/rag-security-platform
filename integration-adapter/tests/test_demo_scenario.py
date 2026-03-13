@@ -36,6 +36,14 @@ def test_demo_scenario_report_contains_real_vs_synthetic_map(tmp_path) -> None:
     story_steps = report["story_steps"]
     assert len(story_steps) == 8
     assert story_steps[0]["step"] == "request enters runtime context"
+    coverage = report["event_type_coverage"]
+    assert set(coverage.keys()) == {
+        "request_start",
+        "retrieval_decision",
+        "tool_decision",
+        "mcp_usage",
+        "request_end",
+    }
     assert report["remaining_realism_gaps"]
 
     report_path = tmp_path / "artifacts" / "logs" / "demo_scenario.report.json"

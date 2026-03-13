@@ -3,11 +3,11 @@
 ## Scope and constraints
 
 This blueprint defines a non-invasive integration where:
-- **Onyx** remains runtime execution plane.
-- **Starter Kit** remains governance/evidence/launch-gate plane.
-- **integration-adapter** remains additive translation plane.
+- **Implemented:** **Onyx** remains runtime execution plane.
+- **Implemented:** **Starter Kit** remains governance/evidence/launch-gate plane.
+- **Implemented:** **integration-adapter** remains additive translation plane.
 
-Assumptions not fully verifiable from current workspace are explicitly labeled.
+Assumptions not fully verifiable from current workspace are explicitly labeled as **Unconfirmed**.
 
 ## Status labels used in this document
 
@@ -78,9 +78,9 @@ Overlapping concern domains:
 
 ## Trust zones
 
-1. Zone A — Runtime (Onyx)
-2. Zone B — Adapter (read/transform/export)
-3. Zone C — Governance (Starter Kit read-only consumption)
+1. **Implemented:** Zone A — Runtime (Onyx)
+2. **Implemented:** Zone B — Adapter (read/transform/export)
+3. **Implemented:** Zone C — Governance (Starter Kit read-only consumption)
 
 **Implemented (design intent):** Expected flow is **A -> B -> C**.
 
@@ -92,5 +92,5 @@ Overlapping concern domains:
 
 ## Planned next verification
 
-- Pin and verify live hook sources against specific upstream commits.
-- Add environment-backed integration tests for DB/event hook paths.
+- **Planned:** Pin and verify live hook sources against specific upstream commits.
+- **Planned:** Add environment-backed integration tests for DB/event hook paths.

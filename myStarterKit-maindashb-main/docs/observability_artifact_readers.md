@@ -36,3 +36,9 @@ This document defines assumptions and safe-failure behavior for the read-only da
 - This module should be consumed by API/service layers only.
 - Keep it read-only and artifact-backed.
 - Do not route dashboard requests into enforcement components.
+
+## Artifacts-root compatibility notes
+
+- Dashboard readers support configurable artifact roots (e.g., integration-adapter output paths).
+- Replay cross-link lookup uses the configured artifacts root, not a hardcoded local path.
+- Safe local defaults remain localhost-oriented and read-only.

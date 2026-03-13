@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+"""Pipeline orchestration for adapter evidence flows.
+
+Status labels used in this module:
+- Implemented: artifact generation and launch-gate orchestration from normalized payloads.
+- Partially Implemented: live collection depends on optional runtime hooks in exporters.
+- Demo-only: deterministic fallback payloads when live runtime data is unavailable.
+- Unconfirmed: production runtime hook parity is not asserted by this module.
+"""
+
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -48,7 +57,9 @@ class PipelineResult:
 def collect_from_onyx(*, force_demo: bool = False) -> CollectedPayload:
     """Collect exporter payloads from Onyx-facing sources.
 
-    If no live data is available (or force_demo=True), returns deterministic demo payloads.
+    Partially Implemented: uses exporter live reads when available.
+    Demo-only: if no live data is available (or force_demo=True), returns deterministic demo payloads.
+    Unconfirmed: canonical production runtime hook parity is not validated in this workspace.
     """
 
     connectors = ConnectorInventoryExporter().export()

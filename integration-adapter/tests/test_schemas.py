@@ -64,3 +64,20 @@ def test_schema_validation_rejects_non_list_delegation_chain() -> None:
         assert False, "expected ValueError"
     except ValueError as exc:
         assert "delegation_chain" in str(exc)
+
+
+def test_schema_validation_rejects_invalid_identity_source_value() -> None:
+    event = NormalizedAuditEvent(
+        event_id="evt-identity",
+        trace_id="trace-identity",
+        request_id="req-identity",
+        event_type="request.start",
+        actor_id="actor-identity",
+        tenant_id="tenant-identity",
+        identity_authz_field_sources={"actor_id": "invalid"},
+    )
+    try:
+        event.to_dict()
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "identity_authz_field_sources" in str(exc)

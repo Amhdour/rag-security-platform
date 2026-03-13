@@ -11,6 +11,38 @@ This repository includes strong artifact-level verification, but some runtime as
 - Dashboard compatibility parsing for generated artifacts.
 - End-to-end demo pipeline smoke flow.
 
+### Verification matrix (claims -> tests)
+
+1. **Schema validation**
+   - `integration-adapter/tests/test_schemas.py`
+   - `integration-adapter/tests/test_identity_mapping.py`
+
+2. **Exporter outputs**
+   - `integration-adapter/tests/test_exporters.py`
+
+3. **Malformed and missing input handling**
+   - `integration-adapter/tests/test_malformed_input.py`
+   - `integration-adapter/tests/test_missing_fields.py`
+   - `integration-adapter/tests/test_evidence_pipeline_failures.py`
+
+4. **Artifact generation**
+   - `integration-adapter/tests/test_artifact_generation.py`
+   - `integration-adapter/tests/test_pipeline.py`
+
+5. **Launch-gate PASS / WARN / FAIL**
+   - `integration-adapter/tests/test_launch_gate_evaluator.py`
+
+6. **Dashboard artifact compatibility (where testable)**
+   - `integration-adapter/tests/integration/test_dashboard_artifact_compatibility.py`
+   - `integration-adapter/tests/integration/test_dashboard_artifact_compatibility_malformed.py`
+   - `integration-adapter/tests/integration/test_dashboard_service_compatibility.py`
+   - `myStarterKit-maindashb-main/tests/unit/test_observability_dashboard_api.py`
+   - `myStarterKit-maindashb-main/tests/unit/test_observability_artifact_readers.py`
+
+7. **End-to-end demo smoke test**
+   - `integration-adapter/tests/integration/test_demo_pipeline_smoke.py`
+   - `integration-adapter/tests/test_demo_scenario.py`
+
 ## Runtime assumptions not fully testable here
 
 1. **Live Onyx DB/session extraction paths**
@@ -35,4 +67,3 @@ This repository includes strong artifact-level verification, but some runtime as
 
 - **Adapter unit + integration-style tests** run under `integration-adapter/tests/` and cover schema validation, exporter normalization, malformed/missing input handling, artifact generation, launch-gate pass/warn/fail, dashboard reader compatibility, and demo smoke.
 - **Starter Kit dashboard targeted tests** cover read-only API behavior, malformed artifact handling, and local/sibling artifact root resolution.
-

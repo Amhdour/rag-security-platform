@@ -1,11 +1,13 @@
-# Threat Model — rag-security-platform-main (Integration Workspace)
+# Threat Model — `rag-security-platform-main` (Integration Workspace)
 
-This threat model is scoped to the three-plane integration architecture:
-- **Onyx runtime plane** (`onyx-main/`)
-- **Integration adapter plane** (`integration-adapter/`)
-- **Governance/evidence plane** (`myStarterKit-maindashb-main/`)
+This threat model covers the three-plane integration boundary used in this repository:
 
-**Implemented:** This model focuses on threats that can be reasoned about using implementation that exists in this workspace.
+- **Runtime plane:** `onyx-main/`
+- **Translation plane:** `integration-adapter/`
+- **Governance/evidence plane:** `myStarterKit-maindashb-main/`
+
+**Implemented:** This document is implementation-backed and evidence-centric.
+**Unconfirmed:** It does **not** claim standalone production runtime enforcement proof.
 
 Status labels:
 - **Implemented**
@@ -18,150 +20,152 @@ Status labels:
 
 ## 1) Prompt injection
 
-- **Threat description:** Malicious prompt content attempts to induce unsafe tool calls, policy bypass, or misleading evidence traces.
-- **Affected plane:** Runtime (primary), Adapter (secondary evidence fidelity).
+- **Threat description:** Malicious prompt content tries to coerce unsafe retrieval/tool behavior and produce misleading downstream evidence.
+- **Affected plane:** Runtime (primary), Adapter (evidence normalization).
 - **Relevant controls:**
-  - Adapter event normalization preserves policy/tool/retrieval decisions as audit evidence.
-  - Launch-gate checks for required lifecycle events and eval evidence presence.
-  - Demo/eval artifact generation includes adversarial-style scenarios in evidence rows.
+  - Normalized audit events preserve lifecycle/policy/retrieval/tool decisions.
+  - Launch-gate checks required audit lifecycle presence and eval evidence presence.
 - **Current evidence source:**
-  - `artifacts/logs/audit.jsonl`
-  - `artifacts/logs/evals/*.jsonl`
-  - `artifacts/logs/launch_gate/security-readiness-*.json`
-- **Current implementation status:** **Partially Implemented** (artifact-side evidence checks exist; runtime enforcement proof remains outside adapter).
-- **Gaps:** Runtime prompt-safety enforcement is not proven by adapter artifacts alone.
-- **Planned next engineering action:** Add environment-backed contract tests against real runtime prompt-injection traces and pin source hooks.
+  - `integration-adapter/artifacts/logs/audit.jsonl`
+  - `integration-adapter/artifacts/logs/evals/*.jsonl`
+  - `integration-adapter/artifacts/logs/launch_gate/security-readiness-*.json`
+- **Current implementation status:** **Partially Implemented**.
+- **Gaps:** Artifact presence does not prove runtime prompt defenses were enforced for every request.
+- **Next engineering action:** Add pinned-runtime prompt-injection trace fixtures and adapter contract tests against them.
 
 ## 2) Retrieval boundary bypass
 
-- **Threat description:** Cross-tenant or out-of-scope retrieval access occurs without proper denial/control evidence.
+- **Threat description:** Retrieval returns out-of-scope or cross-tenant sources without trustworthy deny/allow evidence.
 - **Affected plane:** Runtime and Adapter.
 - **Relevant controls:**
-  - Normalized retrieval decision events (`retrieval.decision`) with `tenant_id`, `resource_scope`, `authz_result`, `decision_basis`.
-  - Launch-gate required audit event checks.
+  - `retrieval.decision` normalization with `tenant_id`, `resource_scope`, `authz_result`, `decision_basis`.
+  - Launch-gate lifecycle and schema-validity checks.
 - **Current evidence source:**
-  - `audit.jsonl` normalized events
-  - demo report story steps and realism gaps
+  - `audit.jsonl` (`retrieval.decision` rows)
+  - launch-gate machine output
 - **Current implementation status:** **Partially Implemented**.
-- **Gaps:** Canonical production retrieval hook parity is **Unconfirmed** across deployment modes.
-- **Planned next engineering action:** Validate retrieval decision hook mapping from real Onyx traces and add fixture-based regression tests.
+- **Gaps:** **Unconfirmed:** canonical production retrieval hook parity across deployment modes.
+- **Next engineering action:** Validate retrieval hook mapping from pinned real runtime traces.
 
 ## 3) Data exfiltration
 
-- **Threat description:** Sensitive data leaves trust boundary via tools, MCP endpoints, or malformed output channels.
+- **Threat description:** Sensitive data leaves allowed boundary through tool/MCP calls or weak output controls.
 - **Affected plane:** Runtime, Adapter, Governance.
 - **Relevant controls:**
-  - Tool/MCP decision + execution-attempt evidence in normalized audit stream.
-  - Launch-gate completeness/schema checks fail closed on malformed evidence.
+  - Normalized `tool.decision` and `tool.execution_attempt` evidence.
+  - Launch-gate fail-closed checks for malformed/missing evidence.
 - **Current evidence source:**
-  - `audit.jsonl` (`tool.decision`, `tool.execution_attempt`)
-  - `launch_gate` checks `artifact_completeness`, `artifact_schema_validity`.
+  - `audit.jsonl`
+  - launch-gate checks `artifact_completeness`, `artifact_schema_validity`, `critical_failures_or_blockers`
 - **Current implementation status:** **Partially Implemented**.
-- **Gaps:** Exfiltration prevention is not proven by artifact presence; only evidence quality is evaluated.
-- **Planned next engineering action:** Add eval scenarios + critical severity mapping specifically for exfiltration attempts and verify runtime deny traces.
+- **Gaps:** Evidence quality checks do not prove runtime exfiltration prevention.
+- **Next engineering action:** Add explicit exfiltration eval scenarios with high/critical severity and contract fixtures.
 
 ## 4) Tool escalation
 
-- **Threat description:** Request escalates to high-risk tool execution without proper authz or confirmation semantics.
+- **Threat description:** Request is escalated to higher-risk tool behavior without sufficient authorization/confirmation evidence.
 - **Affected plane:** Runtime and Adapter.
 - **Relevant controls:**
-  - Normalized `tool.decision` and `confirmation.required` events.
-  - Identity/authz mapping fields (`authz_result`, `decision_basis`, `tool_invocation_id`, `delegation_chain`).
+  - `tool.decision` and `confirmation.required` normalization.
+  - Identity/authz fields (`authz_result`, `decision_basis`, `tool_invocation_id`, `delegation_chain`).
 - **Current evidence source:**
   - `audit.jsonl`
-  - launch-gate critical/high eval failure check.
+  - launch-gate critical/high eval failure check
 - **Current implementation status:** **Partially Implemented**.
-- **Gaps:** Canonical runtime tool-policy checkpoint wiring remains **Unconfirmed**.
-- **Planned next engineering action:** Capture/pin real tool decision and confirmation traces from runtime and add contract fixtures.
+- **Gaps:** **Unconfirmed:** canonical runtime tool-policy checkpoint semantics.
+- **Next engineering action:** Capture real tool authorization traces and assert field-level mapping contract.
 
 ## 5) MCP privilege abuse
 
-- **Threat description:** MCP server/tool access exceeds intended privilege or trust domain.
+- **Threat description:** MCP server/tool use exceeds intended privilege, trust domain, or policy.
 - **Affected plane:** Runtime and Adapter.
 - **Relevant controls:**
-  - MCP inventory export + classification (`mcp_servers.inventory.json`).
-  - MCP usage represented via normalized `tool.execution_attempt` events.
-  - Launch-gate MCP classification check.
+  - MCP inventory export and classification checks.
+  - MCP usage representation through `tool.execution_attempt` events.
 - **Current evidence source:**
   - `mcp_servers.inventory.json`
   - `audit.jsonl`
+  - launch-gate check `mcp_inventory_classified`
 - **Current implementation status:** **Partially Implemented**.
-- **Gaps:** Production MCP usage semantics are **Unconfirmed** and may be fallback-derived in this workspace.
-- **Planned next engineering action:** Validate canonical MCP usage counters/decision semantics against live runtime and tighten mapping contracts.
+- **Gaps:** **Unconfirmed:** production MCP usage semantics may differ from fallback representations.
+- **Next engineering action:** Validate MCP usage semantics against pinned runtime data and tighten mapping docs/tests.
 
 ## 6) Identity spoofing
 
-- **Threat description:** Forged actor/session/persona context appears in runtime path without trustworthy provenance.
+- **Threat description:** Actor/session/persona context is forged or ambiguous, weakening attribution trust.
 - **Affected plane:** Runtime and Adapter.
 - **Relevant controls:**
-  - Normalized identity/authz fields with per-field source attribution (`sourced`/`derived`/`unavailable`).
-  - Schema validation of normalized events.
+  - Normalized identity/authz fields.
+  - Per-field source attribution: `sourced` / `derived` / `unavailable`.
+  - Schema validation of identity source markers.
 - **Current evidence source:**
-  - `audit.jsonl` fields: `actor_id`, `tenant_id`, `session_id`, `persona_or_agent_id`, `delegation_chain`, `identity_authz_field_sources`.
-- **Current implementation status:** **Implemented** (adapter mapping layer), **Unconfirmed** (runtime trust guarantees).
-- **Gaps:** Source attribution does not cryptographically prove identity authenticity.
-- **Planned next engineering action:** Add signed identity context or immutable provenance markers from runtime hooks where feasible.
+  - `audit.jsonl` identity/authz fields and `identity_authz_field_sources`
+  - adapter tests for identity mapping and missing fields
+- **Current implementation status:** **Implemented** (adapter mapping), **Unconfirmed** (runtime authenticity guarantees).
+- **Gaps:** No cryptographic identity attestation in workspace artifacts.
+- **Next engineering action:** Add immutable/signed identity context inputs where runtime supports them.
 
 ## 7) Audit bypass
 
-- **Threat description:** Critical request lifecycle or decision events are missing/invalid in evidence stream.
+- **Threat description:** Required lifecycle/audit evidence is missing, malformed, or silently skipped.
 - **Affected plane:** Adapter and Governance.
 - **Relevant controls:**
-  - Launch-gate `required_audit_events_present` fail-closed behavior.
-  - Schema-validity checks on `audit.jsonl`.
+  - Launch-gate `required_audit_events_present` (fail-closed).
+  - Launch-gate `artifact_schema_validity` (fail-closed).
 - **Current evidence source:**
-  - `launch_gate/security-readiness-*.json` checks list
+  - `launch_gate/security-readiness-*.json`
   - `audit.jsonl`
 - **Current implementation status:** **Implemented**.
-- **Gaps:** Does not guarantee runtime emitted every event in real-time; validates only available artifacts.
-- **Planned next engineering action:** Add runtime-side event emission SLO checks and ingestion integrity counters.
+- **Gaps:** Artifact checks cannot prove runtime emitted every event in real time.
+- **Next engineering action:** Add runtime-side emission/integrity counters and correlate with adapter ingestion counts.
 
 ## 8) Evidence tampering
 
-- **Threat description:** Artifact files are edited/deleted/replaced post-generation to influence governance outcome.
+- **Threat description:** Generated evidence artifacts are modified/replaced after generation to influence governance outcomes.
 - **Affected plane:** Adapter and Governance.
 - **Relevant controls:**
-  - Launch-gate completeness + schema-validity checks fail closed.
-  - Read-only dashboard consumption model.
+  - Artifact completeness and schema-validity fail-closed checks.
+  - Read-only dashboard ingestion.
 - **Current evidence source:**
-  - `launch_gate` outputs with blockers/residual risks
-  - artifact directory structure checks.
+  - launch-gate machine/markdown outputs
+  - expected artifact tree under `artifacts/logs`
 - **Current implementation status:** **Partially Implemented**.
-- **Gaps:** No cryptographic signing or immutable storage guarantees in this workspace.
-- **Planned next engineering action:** Add artifact digest manifest/signature and optional immutable object-store write path.
+- **Gaps:** No cryptographic signature/attestation pipeline for artifacts in this workspace.
+- **Next engineering action:** Add digest/signature manifest and optional immutable storage flow.
 
 ## 9) Schema drift
 
-- **Threat description:** Runtime payload changes silently break adapter mapping or degrade evidence semantics.
+- **Threat description:** Upstream runtime shape changes degrade adapter mapping semantics without immediate detection.
 - **Affected plane:** Adapter.
 - **Relevant controls:**
-  - Mapper defaults + defensive parsing.
-  - Schema validation tests and malformed-input tests.
-  - Launch-gate schema-validity check.
+  - Defensive mapping defaults.
+  - Adapter schema/malformed-input tests.
+  - Launch-gate `artifact_schema_validity`.
 - **Current evidence source:**
-  - adapter tests
-  - launch-gate `artifact_schema_validity`
+  - adapter test suite under `integration-adapter/tests/`
+  - launch-gate output
 - **Current implementation status:** **Partially Implemented**.
-- **Gaps:** Upstream hook parity/version pinning remains **Unconfirmed**.
-- **Planned next engineering action:** Introduce explicit input contract versioning and compatibility matrix automation.
+- **Gaps:** **Unconfirmed:** pinned runtime hook/version parity coverage is incomplete.
+- **Next engineering action:** Introduce explicit input contract versioning and compatibility automation.
 
 ---
 
-## Control-to-Evidence Mapping Table
+## Control-to-Evidence Mapping (implementation-backed)
 
-| Control / Checkpoint | Adapter implementation | Artifact evidence path | Launch-gate check linkage | Demo evidence path |
+| Control area | Adapter schema/code anchor | Artifact evidence | Launch-gate check(s) | Demo evidence path |
 |---|---|---|---|---|
-| Normalized audit event schema (identity/authz fields) | `integration_adapter/schemas.py` `NormalizedAuditEvent`; `integration_adapter/mappers.py` `map_runtime_event` | `integration-adapter/artifacts/logs/audit.jsonl` | `artifact_schema_validity`; `required_audit_events_present` | `integration-adapter/artifacts/logs/demo_scenario.report.json` + `audit.jsonl` |
-| Retrieval decision normalization | `integration_adapter/translators.py` `translate_retrieval_events` | `audit.jsonl` (`retrieval.decision`) | `required_audit_events_present` (lifecycle presence baseline) | `demo_scenario.report.json.story_steps` |
-| Tool authz decision normalization | `integration_adapter/translators.py` `translate_tool_decisions` | `audit.jsonl` (`tool.decision`, `confirmation.required`) | `artifact_schema_validity`; `critical_failures_or_blockers` | `demo_scenario.report.json.story_steps` |
-| MCP inventory + usage representation | `integration_adapter/exporters.py` MCP exporter + runtime events exporter; `translate_mcp_usage` | `mcp_servers.inventory.json`, `audit.jsonl` (`tool.execution_attempt`) | `mcp_inventory_classified`; `artifact_schema_validity` | `demo_scenario.report.json.real_vs_synthetic.mcp_inventory` |
-| Eval evidence normalization/output | `integration_adapter/pipeline.py` + `artifact_output.py` eval writing | `evals/*.jsonl`, `evals/*.summary.json` | `eval_results_present`; `critical_failures_or_blockers`; `artifact_schema_validity` | `evals/demo-e2e.jsonl` |
-| Artifact integrity/completeness | `integration_adapter/launch_gate_evaluator.py` | full `artifacts/logs` tree | `artifact_completeness`; `artifact_schema_validity` | demo run writes + verifies `missing_outputs=[]` |
-| Evidence vs control honesty | `integration_adapter/launch_gate_evaluator.py` output fields | `launch_gate/security-readiness-*.json` (`evidence_status`, `control_assessment`) | output-level semantics | `launch_gate/security-readiness-*.json` from demo run |
+| Normalized audit schema + identity/authz attribution | `integration-adapter/integration_adapter/schemas.py` (`NormalizedAuditEvent`), `integration-adapter/integration_adapter/mappers.py` (`map_runtime_event`) | `integration-adapter/artifacts/logs/audit.jsonl` | `artifact_schema_validity`, `required_audit_events_present` | `integration-adapter/artifacts/logs/demo_scenario.report.json` + `audit.jsonl` |
+| Retrieval boundary decision evidence | `integration-adapter/integration_adapter/translators.py` (`translate_retrieval_events`) | `audit.jsonl` (`retrieval.decision`) | `required_audit_events_present` | `demo_scenario.report.json` (`story_steps`, `event_type_coverage`) |
+| Tool authz / escalation evidence | `integration-adapter/integration_adapter/translators.py` (`translate_tool_decisions`) | `audit.jsonl` (`tool.decision`, `confirmation.required`) | `artifact_schema_validity`, `critical_failures_or_blockers` | `demo_scenario.report.json` (`story_steps`) |
+| MCP inventory + usage evidence | `integration-adapter/integration_adapter/exporters.py` + `translate_mcp_usage` | `mcp_servers.inventory.json`, `audit.jsonl` (`tool.execution_attempt`) | `mcp_inventory_classified`, `artifact_schema_validity` | `demo_scenario.report.json` (`real_vs_synthetic.mcp_inventory`) |
+| Eval evidence availability + severity signaling | `integration-adapter/integration_adapter/pipeline.py`, `integration-adapter/integration_adapter/artifact_output.py` | `evals/*.jsonl`, `evals/*.summary.json` | `eval_results_present`, `critical_failures_or_blockers`, `artifact_schema_validity` | `integration-adapter/artifacts/logs/evals/demo-e2e.jsonl` |
+| Artifact integrity/completeness | `integration-adapter/integration_adapter/launch_gate_evaluator.py` | `artifacts/logs` tree and launch-gate outputs | `artifact_completeness`, `artifact_schema_validity` | `demo_scenario.report.json` (`missing_outputs`) |
+| Evidence-vs-control honesty | `integration-adapter/integration_adapter/launch_gate_evaluator.py` output fields (`evidence_status`, `control_assessment`) | `launch_gate/security-readiness-*.json` | output semantics (machine + markdown) | demo launch-gate output in `integration-adapter/artifacts/logs/launch_gate/` |
 
 ---
 
-## Scope boundary notes
+## Scope notes
 
-- This model is evidence-centric for the integration workspace and does **not** claim standalone production enforcement guarantees.
-- **Unconfirmed:** canonical runtime hook parity across all deployment topologies remains to be validated with pinned upstream runtime commits.
+- **Implemented:** This threat model is specific to this integration workspace and artifact contracts.
+- **Unconfirmed:** canonical runtime hook parity across all deployment topologies is not fully validated here.
+- **Implemented:** Claims above are restricted to implementation that is present and test-backed in this repository.
