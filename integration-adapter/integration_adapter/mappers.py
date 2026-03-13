@@ -13,7 +13,16 @@ def map_connector_inventory(rows: list[dict[str, Any]]) -> list[InventoryRecord]
             record_id=str(row.get("id", f"connector-{idx}")),
             name=str(row.get("name", "unknown_connector")),
             status=str(row.get("status", "unknown")),
-            metadata={"source_type": row.get("source_type", "unknown"), "indexed": bool(row.get("indexed", False))},
+            metadata={
+                "source_type": row.get("source_type", "unknown"),
+                "indexed": bool(row.get("indexed", False)),
+                "source_mode": row.get("source_mode", "synthetic"),
+                "source_path": row.get("source_path", ""),
+                "fallback_used": bool(row.get("fallback_used", False)),
+                "source_warnings": row.get("source_warnings", []),
+                "source_errors": row.get("source_errors", []),
+                "derived_fields": row.get("derived_fields", []),
+            },
         )
         for idx, row in enumerate(rows)
     ]
@@ -26,7 +35,16 @@ def map_tool_inventory(rows: list[dict[str, Any]]) -> list[InventoryRecord]:
             record_id=str(row.get("id", f"tool-{idx}")),
             name=str(row.get("name", "unknown_tool")),
             status=str(row.get("status", "unknown")),
-            metadata={"risk_tier": row.get("risk_tier", "unspecified"), "enabled": bool(row.get("enabled", False))},
+            metadata={
+                "risk_tier": row.get("risk_tier", "unspecified"),
+                "enabled": bool(row.get("enabled", False)),
+                "source_mode": row.get("source_mode", "synthetic"),
+                "source_path": row.get("source_path", ""),
+                "fallback_used": bool(row.get("fallback_used", False)),
+                "source_warnings": row.get("source_warnings", []),
+                "source_errors": row.get("source_errors", []),
+                "derived_fields": row.get("derived_fields", []),
+            },
         )
         for idx, row in enumerate(rows)
     ]
@@ -39,7 +57,16 @@ def map_mcp_inventory(rows: list[dict[str, Any]]) -> list[InventoryRecord]:
             record_id=str(row.get("id", f"mcp-{idx}")),
             name=str(row.get("name", "unknown_mcp_server")),
             status=str(row.get("status", "unknown")),
-            metadata={"endpoint": row.get("endpoint", ""), "usage_count": int(row.get("usage_count", 0))},
+            metadata={
+                "endpoint": row.get("endpoint", ""),
+                "usage_count": int(row.get("usage_count", 0)),
+                "source_mode": row.get("source_mode", "synthetic"),
+                "source_path": row.get("source_path", ""),
+                "fallback_used": bool(row.get("fallback_used", False)),
+                "source_warnings": row.get("source_warnings", []),
+                "source_errors": row.get("source_errors", []),
+                "derived_fields": row.get("derived_fields", []),
+            },
         )
         for idx, row in enumerate(rows)
     ]
@@ -52,7 +79,16 @@ def map_eval_inventory(rows: list[dict[str, Any]]) -> list[InventoryRecord]:
             record_id=str(row.get("id", f"eval-{idx}")),
             name=str(row.get("suite", "unknown_suite")),
             status="pass" if bool(row.get("passed", False)) else "fail",
-            metadata={"score": row.get("score", 0), "scenario": row.get("scenario", "unspecified")},
+            metadata={
+                "score": row.get("score", 0),
+                "scenario": row.get("scenario", "unspecified"),
+                "source_mode": row.get("source_mode", "synthetic"),
+                "source_path": row.get("source_path", ""),
+                "fallback_used": bool(row.get("fallback_used", False)),
+                "source_warnings": row.get("source_warnings", []),
+                "source_errors": row.get("source_errors", []),
+                "derived_fields": row.get("derived_fields", []),
+            },
         )
         for idx, row in enumerate(rows)
     ]
@@ -159,8 +195,8 @@ def map_runtime_event(raw: dict[str, Any]) -> NormalizedAuditEvent:
         trace_id=str(raw.get("trace_id") or raw.get("request_id") or "unknown-trace"),
         request_id=str(raw.get("request_id") or "unknown-request"),
         event_type=str(raw.get("event_type") or "fallback.event"),
-        actor_id=str(raw.get("actor_id") or "unknown-actor"),
-        tenant_id=str(raw.get("tenant_id") or "unknown-tenant"),
+        actor_id=str(raw.get("actor_id") or "unavailable"),
+        tenant_id=str(raw.get("tenant_id") or "unavailable"),
         event_payload=payload,
         session_id=session_id,
         persona_or_agent_id=persona_or_agent_id,
@@ -170,8 +206,8 @@ def map_runtime_event(raw: dict[str, Any]) -> NormalizedAuditEvent:
         resource_scope=resource_scope,
         authz_result=authz_result,
         identity_authz_field_sources={
-            "actor_id": _source_for_key(raw, "actor_id") if raw.get("actor_id") else "derived",
-            "tenant_id": _source_for_key(raw, "tenant_id") if raw.get("tenant_id") else "derived",
+            "actor_id": _source_for_key(raw, "actor_id") if raw.get("actor_id") else "unavailable",
+            "tenant_id": _source_for_key(raw, "tenant_id") if raw.get("tenant_id") else "unavailable",
             "session_id": session_source,
             "persona_or_agent_id": persona_source,
             "tool_invocation_id": tool_invocation_source,

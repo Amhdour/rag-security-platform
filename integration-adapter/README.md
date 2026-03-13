@@ -62,6 +62,7 @@ Proven vs inferred guidance:
 - **Proven in artifacts:** a field value exists in the normalized artifact and indicates whether it was sourced/derived/unavailable.
 - **Inferred/Derived:** adapter inferred value from adjacent payload semantics (e.g., `resource_scope` from `source_id` or `tool_name`).
 - **Unconfirmed:** canonical runtime hook parity across deployment modes is not established by this workspace alone.
+- **Implemented:** See `../docs/identity-authz-evidence.md` for explicit proven vs inferred semantics and launch-gate authz provenance quality policy.
 
 **Partially Implemented:** Best-effort Onyx concept mapping used by adapter:
 - **Partially Implemented:** `session_id` uses `session_id` or Onyx `chat_session_id` when present, else derives from `trace_id`.
@@ -89,6 +90,121 @@ Proven vs inferred guidance:
 ## Mapping contract
 
 - `docs/onyx-to-starterkit-mapping.md`
+
+## Upstream provenance lock
+
+- **Implemented:** Workspace-level upstream provenance is tracked in `../docs/upstream-provenance.lock.json`.
+- **Implemented:** Validate lock-file shape via `make provenance-check` (repo root) or `python ../scripts/validate_upstream_provenance_lock.py` (from `integration-adapter/`).
+- **Unconfirmed:** Runtime/governance upstream commit pins remain unavailable when nested `.git` metadata is absent.
+
+## Schema versioning and compatibility
+
+- **Implemented:** Source, normalized, artifact bundle, and launch-gate schema versions are explicit and enforced.
+- **Implemented:** Compatibility policy outcomes are `allowed`, `warn_only`, and `blocked` with deterministic behavior.
+- **Implemented:** Artifact generation blocks on incompatible major-version contracts and warns on forward minor drift.
+- **Implemented:** See `../docs/schema-versioning.md` for policy and upgrade/downgrade guidance.
+
+## Exporter source modes and parity
+
+- **Implemented:** Exporters emit explicit source-mode metadata (`live`, `db_backed`, `file_backed`, `fixture_backed`, `synthetic`).
+- **Implemented:** Fallback usage, warnings, errors, and derived/defaulted fields are included in exporter outputs.
+- **Partially Implemented:** Real extraction paths are available for connector/tool/MCP/runtime-event DB hooks, with deployment-dependent parity caveats.
+- **Implemented:** See `../docs/exporter-parity.md` for exporter-by-exporter parity status and gaps.
+
+## Adapter health telemetry
+
+- **Implemented:** Adapter emits `artifacts/logs/adapter_health/adapter_run_summary.json` for run-level observability.
+- **Implemented:** Health metrics include source modes, fallback count, parse failures, schema validation failures, artifact write failures, launch-gate failure reasons, stale evidence detections, and partial extraction warnings.
+- **Implemented:** Health run status is explicit: `success`, `degraded_success`, or `failed_run`.
+- **Implemented:** See `../docs/adapter-health.md` for details.
+
+## Artifact integrity safeguards
+
+- **Implemented:** Adapter writes `artifact_integrity.manifest.json` with per-file SHA-256 and size metadata.
+- **Implemented:** Launch-gate fail-closes on missing/invalid integrity manifests or hash mismatches.
+- **Implemented:** Verify with `python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs`.
+- **Unconfirmed:** no cryptographic non-repudiation/signature chain is implemented in this workspace.
+- **Implemented:** See `../docs/artifact-integrity.md`.
+
+## Negative-path security validation
+
+- **Implemented:** Deterministic failure/adversarial-path coverage is documented in `../docs/negative-path-validation.md`.
+- **Unconfirmed:** canonical runtime hook not validated in this workspace.
+- **Planned:** stronger anti-tamper guarantees via signed artifact attestations.
+
+## Launch-gate policy
+
+- **Implemented:** Launch-gate evaluates evidence quality (not only presence) including freshness, compatibility, source quality, exporter degradation, identity/authz fields, and threat-control mapping completeness.
+- **Implemented:** Critical stale/missing evidence fails closed; non-critical degradation is surfaced as warnings.
+- **Implemented:** See `../docs/launch-gate-policy.md` for thresholds and PASS/WARN/FAIL policy.
+
+## Contract fixtures
+
+- **Implemented:** Pinned fixture sets for connector/tool/MCP/eval/runtime-event contracts live under `tests/fixtures/onyx_contracts/`.
+- **Implemented:** Fixture provenance and sanitization metadata is tracked in `tests/fixtures/onyx_contracts/fixture_manifest.json`.
+- **Implemented:** See `../docs/fixture-catalog.md` for lineage labels (`real-derived`, `sanitized`, `synthetic`, `Demo-only`) and regeneration guidance.
+
+## Packaging and command entrypoints
+
+- **Implemented:** Install in editable mode with dev tooling:
+
+```bash
+cd integration-adapter
+python -m pip install -e .[dev]
+```
+
+- **Implemented:** `pyproject.toml` publishes CLI entrypoints:
+  - `integration-adapter-collect`
+  - `integration-adapter-generate`
+  - `integration-adapter-gate`
+  - `integration-adapter-evidence`
+  - `integration-adapter-validate`
+  - `integration-adapter-ci-smoke`
+
+## Environment profiles and safeguards
+
+- **Implemented:** Supported profiles are `demo`, `dev`, `ci`, and `prod_like`.
+- **Implemented:** Profiles define allowed source modes, freshness thresholds, logging verbosity expectations, and synthetic fallback policy.
+- **Implemented:** `prod_like` blocks unsafe combinations (demo mode, synthetic runtime evidence, stale/missing critical evidence, and fallback usage).
+- **Implemented:** See `../docs/environment-profiles.md` for policy details and examples.
+
+## Configuration validation
+
+- **Implemented:** Validate artifacts root and currently configured source inputs:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.validate_config
+```
+
+- **Implemented:** Strict mode fails when required source env vars are missing or malformed:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.validate_config --strict-sources
+```
+
+- **Implemented:** No hidden required state in non-strict mode; absent source env vars are surfaced as warnings and adapter may use file/db/demo fallbacks.
+
+## Operational runbook
+
+| Goal | Command | Success signal | Failure signal |
+|---|---|---|---|
+| Validate config/profile | `python -m integration_adapter.validate_config --profile dev` | JSON `"status": "pass"` | non-zero exit + `config validation failed` |
+| Generate artifacts | `python -m integration_adapter.generate_artifacts --demo --profile demo --artifacts-root artifacts/logs` | prints contract/audit/launch-gate/integrity paths | non-zero exit + `artifact generation failed` |
+| Verify integrity | `python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs` | JSON `"ok": true` | non-zero exit + missing/hash mismatch details |
+| Evaluate gate | `python -m integration_adapter.run_launch_gate --profile demo --artifacts-root artifacts/logs` | launch-gate JSON path printed | non-zero exit + `launch gate failed` |
+
+Profile behavior summary:
+- **Implemented:** `demo` allows synthetic/fixture fallback for reproducible demos.
+- **Implemented:** `dev` allows fallback with warnings for iterative local use.
+- **Implemented:** `ci` allows deterministic smoke checks without external services.
+- **Implemented:** `prod_like` blocks synthetic fallback and stale/missing critical evidence.
+
+Real vs synthetic vs derived:
+- **Implemented:** `source_mode` on inventories/events distinguishes `live`, `db_backed`, `file_backed`, `fixture_backed`, `synthetic`.
+- **Implemented:** identity/authz `identity_authz_field_sources` marks each field as `sourced`, `derived`, or `unavailable`.
+- **Unconfirmed:** canonical runtime hook not validated in this workspace.
 
 ## Output layout
 
@@ -122,8 +238,8 @@ Optional path override for reproducible runs:
 
 ```bash
 cd integration-adapter
-python -m integration_adapter.generate_artifacts --demo --artifacts-root artifacts/logs
-python -m integration_adapter.run_launch_gate --artifacts-root artifacts/logs
+python -m integration_adapter.generate_artifacts --demo --profile demo --artifacts-root artifacts/logs
+python -m integration_adapter.run_launch_gate --profile demo --artifacts-root artifacts/logs
 ```
 
 One-command pipeline from repo root:
@@ -161,11 +277,19 @@ Or:
 
 ```bash
 cd integration-adapter
-python -m integration_adapter.evidence_pipeline --demo
+python -m integration_adapter.evidence_pipeline --demo --profile demo
+```
+
+CI-friendly smoke command (demo, no external services):
+
+```bash
+cd integration-adapter
+python -m integration_adapter.ci_smoke
 ```
 
 Environment overrides:
 - `INTEGRATION_ADAPTER_ARTIFACTS_ROOT`
+- `INTEGRATION_ADAPTER_PROFILE`
 - `INTEGRATION_ADAPTER_ONYX_CONNECTORS_JSON`
 - `INTEGRATION_ADAPTER_ONYX_TOOLS_JSON`
 - `INTEGRATION_ADAPTER_ONYX_MCP_JSON`

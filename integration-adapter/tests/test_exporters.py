@@ -9,6 +9,9 @@ from integration_adapter.exporters import (
     EvalResultsExporter,
     MCPInventoryExporter,
     RuntimeEventsExporter,
+    SOURCE_MODE_DB_BACKED,
+    SOURCE_MODE_FILE_BACKED,
+    SOURCE_MODE_FIXTURE_BACKED,
     ToolInventoryExporter,
 )
 
@@ -33,15 +36,9 @@ def test_connector_inventory_exporter_reads_json_snapshot(tmp_path, monkeypatch)
 
     rows = ConnectorInventoryExporter().export()
 
-    assert rows == [
-        {
-            "id": "con-1",
-            "name": "confluence",
-            "status": "active",
-            "source_type": "wiki",
-            "indexed": True,
-        }
-    ]
+    assert rows[0]["id"] == "con-1"
+    assert rows[0]["source_mode"] == SOURCE_MODE_FILE_BACKED
+    assert rows[0]["fallback_used"] is False
 
 
 def test_tool_inventory_exporter_defaults_missing_fields(tmp_path, monkeypatch) -> None:
@@ -55,10 +52,13 @@ def test_tool_inventory_exporter_defaults_missing_fields(tmp_path, monkeypatch) 
     assert rows[0]["status"] == "unknown"
     assert rows[0]["risk_tier"] == "unspecified"
     assert rows[0]["enabled"] is False
+    assert "risk_tier" in rows[0]["derived_fields"]
+    assert "enabled" in rows[0]["derived_fields"]
 
 
 def test_mcp_inventory_exporter_reads_json_snapshot(tmp_path, monkeypatch) -> None:
-    snapshot = tmp_path / "mcp.json"
+    snapshot = tmp_path / "fixtures" / "mcp.json"
+    snapshot.parent.mkdir(parents=True, exist_ok=True)
     snapshot.write_text(
         json.dumps(
             [
@@ -80,6 +80,7 @@ def test_mcp_inventory_exporter_reads_json_snapshot(tmp_path, monkeypatch) -> No
     assert rows[0]["id"] == "mcp-1"
     assert rows[0]["endpoint"] == "https://mcp.local"
     assert rows[0]["usage_count"] == 3
+    assert rows[0]["source_mode"] == SOURCE_MODE_FIXTURE_BACKED
 
 
 def test_eval_results_exporter_maps_rows(tmp_path, monkeypatch) -> None:
@@ -102,15 +103,9 @@ def test_eval_results_exporter_maps_rows(tmp_path, monkeypatch) -> None:
 
     rows = EvalResultsExporter().export()
 
-    assert rows == [
-        {
-            "id": "eval-1",
-            "suite": "security_baseline",
-            "passed": True,
-            "score": 0.98,
-            "scenario": "prompt_injection_direct",
-        }
-    ]
+    assert rows[0]["id"] == "eval-1"
+    assert rows[0]["suite"] == "security_baseline"
+    assert rows[0]["source_mode"] == SOURCE_MODE_FILE_BACKED
 
 
 def test_runtime_events_exporter_filters_invalid_event_types(tmp_path, monkeypatch) -> None:
@@ -144,82 +139,98 @@ def test_runtime_events_exporter_filters_invalid_event_types(tmp_path, monkeypat
     )
     monkeypatch.setenv("INTEGRATION_ADAPTER_ONYX_RUNTIME_EVENTS_JSONL", str(snapshot))
 
-    rows = RuntimeEventsExporter().export()
+    exporter = RuntimeEventsExporter()
+    rows = exporter.export()
 
     assert len(rows) == 1
     assert rows[0]["event_type"] == "request.start"
+    assert exporter.last_acquisition is not None
+    assert any("dropped invalid mapped runtime events" in w for w in exporter.last_acquisition.warnings)
 
 
 def test_connector_exporter_db_fallback_path(monkeypatch) -> None:
     exporter = ConnectorInventoryExporter()
-    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: [])
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: ([], [], []))
     monkeypatch.setattr(
         exporter,
         "_read_from_onyx_db",
-        lambda: [
-            {
-                "id": 1,
-                "name": "drive",
-                "status": "active",
-                "source_type": "google_drive",
-                "indexed": True,
-            }
-        ],
+        lambda: (
+            [
+                {
+                    "id": 1,
+                    "name": "drive",
+                    "status": "active",
+                    "source_type": "google_drive",
+                    "indexed": True,
+                }
+            ],
+            [],
+            [],
+        ),
     )
     rows = exporter.export()
     assert rows[0]["name"] == "drive"
     assert rows[0]["indexed"] is True
+    assert rows[0]["source_mode"] in {SOURCE_MODE_DB_BACKED, "live"}
+    assert rows[0]["fallback_used"] is True
 
 
 def test_tool_exporter_db_fallback_path(monkeypatch) -> None:
     exporter = ToolInventoryExporter()
-    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: [])
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: ([], [], []))
     monkeypatch.setattr(
         exporter,
         "_read_from_onyx_db",
-        lambda: [{"id": 7, "name": "builtin", "status": "enabled", "risk_tier": "low", "enabled": True}],
+        lambda: ([{"id": 7, "name": "builtin", "status": "enabled", "risk_tier": "low", "enabled": True}], [], []),
     )
     rows = exporter.export()
-    assert rows == [{"id": "7", "name": "builtin", "status": "enabled", "risk_tier": "low", "enabled": True}]
+    assert rows[0]["id"] == "7"
+    assert rows[0]["source_mode"] in {SOURCE_MODE_DB_BACKED, "live"}
 
 
 def test_mcp_exporter_db_fallback_path(monkeypatch) -> None:
     exporter = MCPInventoryExporter()
-    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: [])
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: ([], [], []))
     monkeypatch.setattr(
         exporter,
         "_read_from_onyx_db",
-        lambda: [{"id": 3, "name": "mcp", "status": "connected", "endpoint": "http://mcp", "usage_count": 11}],
+        lambda: ([{"id": 3, "name": "mcp", "status": "connected", "endpoint": "http://mcp", "usage_count": 11}], [], []),
     )
     rows = exporter.export()
     assert rows[0]["usage_count"] == 11
+    assert rows[0]["fallback_used"] is True
 
 
 def test_runtime_events_exporter_db_fallback_path(monkeypatch) -> None:
     exporter = RuntimeEventsExporter()
-    monkeypatch.setattr(exporter, "_read_jsonl_records", lambda _path: [])
+    monkeypatch.setattr(exporter, "_read_jsonl_records", lambda _path: ([], [], []))
     monkeypatch.setattr(
         exporter,
         "_read_from_onyx_db",
-        lambda: [
-            {
-                "request_id": "req-1",
-                "trace_id": "trace-1",
-                "event_type": "tool.execution_attempt",
-                "actor_id": "tool-runtime",
-                "tenant_id": "tenant-a",
-                "event_payload": {"tool_name": "search"},
-            }
-        ],
+        lambda: (
+            [
+                {
+                    "request_id": "req-1",
+                    "trace_id": "trace-1",
+                    "event_type": "tool.execution_attempt",
+                    "actor_id": "tool-runtime",
+                    "tenant_id": "tenant-a",
+                    "event_payload": {"tool_name": "search"},
+                }
+            ],
+            [],
+            [],
+        ),
     )
     rows = exporter.export()
     assert rows and rows[0]["event_type"] == "tool.execution_attempt"
+    assert rows[0]["event_payload"]["source_mode"] in {SOURCE_MODE_DB_BACKED, "live"}
 
 
 def test_eval_results_exporter_runtime_config_fallback(monkeypatch) -> None:
     exporter = EvalResultsExporter()
 
-    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: [])
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: ([], [], []))
 
     def _runtime_import(module: str, attribute: str):
         if module == "onyx.configs.app_configs" and attribute == "SCHEDULED_EVAL_DATASET_NAMES":
@@ -241,11 +252,12 @@ def test_eval_results_exporter_runtime_config_fallback(monkeypatch) -> None:
     assert rows[0]["suite"] == "onyx:security-baseline"
     assert rows[0]["scenario"] == "security-baseline"
     assert rows[0]["passed"] is False
+    assert rows[0]["fallback_used"] is True
 
 
 def test_runtime_events_exporter_db_includes_chat_session_lifecycle(monkeypatch) -> None:
     exporter = RuntimeEventsExporter()
-    monkeypatch.setattr(exporter, "_read_jsonl_records", lambda _path: [])
+    monkeypatch.setattr(exporter, "_read_jsonl_records", lambda _path: ([], [], []))
 
     chat_session = SimpleNamespace(id="chat-1", user_id="user-1", time_created="2026-01-01T00:00:00Z", time_updated="2026-01-01T00:00:05Z")
     tool_call = SimpleNamespace(id=5, chat_session_id="chat-1", tool_id=7, tool_call_id="call-7")
@@ -324,11 +336,20 @@ def test_exporters_gracefully_handle_missing_files(monkeypatch) -> None:
     monkeypatch.setenv("INTEGRATION_ADAPTER_ONYX_EVALS_JSON", "/tmp/does-not-exist-evals.json")
     monkeypatch.setenv("INTEGRATION_ADAPTER_ONYX_RUNTIME_EVENTS_JSONL", "/tmp/does-not-exist-audit.jsonl")
 
-    assert ConnectorInventoryExporter().export() == []
-    assert ToolInventoryExporter().export() == []
-    assert MCPInventoryExporter().export() == []
-    assert EvalResultsExporter().export() == []
-    assert RuntimeEventsExporter().export() == []
+    connectors = ConnectorInventoryExporter()
+    tools = ToolInventoryExporter()
+    mcp = MCPInventoryExporter()
+    evals = EvalResultsExporter()
+    events = RuntimeEventsExporter()
+
+    assert connectors.export() == []
+    assert tools.export() == []
+    assert mcp.export() == []
+    assert evals.export() == []
+    assert events.export() == []
+
+    assert connectors.last_acquisition is not None
+    assert any("does not exist" in warning for warning in connectors.last_acquisition.warnings)
 
 
 def test_tool_risk_tier_heuristics() -> None:

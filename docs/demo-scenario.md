@@ -99,3 +99,26 @@ DASHBOARD_ARTIFACTS_ROOT=../integration-adapter/artifacts/logs python -m observa
 - **Unconfirmed:** canonical eval runtime hook parity (often snapshot/file-backed in this workspace).
 - **Unconfirmed:** MCP usage semantics may rely on fallback representation depending on environment.
 - **Unconfirmed:** artifact evidence does not independently prove production runtime control enforcement.
+
+
+## Operational verification sequence
+
+Run demo pipeline with explicit profile and verify integrity:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.evidence_pipeline --demo --profile demo
+python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs
+```
+
+Expected outputs:
+- **Implemented:** `artifact_bundle.contract.json`
+- **Implemented:** `artifact_integrity.manifest.json`
+- **Implemented:** `adapter_health/adapter_run_summary.json`
+- **Implemented:** launch-gate JSON/markdown outputs
+- **Implemented:** `demo_scenario.report.json`
+
+Failure conditions:
+- **Implemented:** demo command returns non-zero on missing required outputs.
+- **Implemented:** integrity command returns non-zero on hash mismatch/missing manifest entries.
+- **Demo-only:** successful demo run is not proof of production enforcement.

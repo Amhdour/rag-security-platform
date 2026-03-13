@@ -20,6 +20,7 @@ def main() -> int:
 
     summary = {
         "mode": payload.mode,
+        "raw_source_schema_version": payload.raw_source_schema_version,
         "connectors": len(payload.connectors),
         "tools": len(payload.tools),
         "mcp_servers": len(payload.mcp_servers),

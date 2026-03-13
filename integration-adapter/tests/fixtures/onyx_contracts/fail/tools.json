@@ -1,0 +1,9 @@
+[
+  {
+    "id": "tool-admin-shell",
+    "name": "admin_shell",
+    "status": "enabled",
+    "risk_tier": "high",
+    "enabled": true
+  }
+]

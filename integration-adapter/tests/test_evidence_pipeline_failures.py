@@ -7,6 +7,8 @@ import integration_adapter.evidence_pipeline as evidence_pipeline
 
 class _Payload:
     mode = "demo"
+    raw_source_schema_version = "1.0"
+    exporter_diagnostics = {}
     connectors = []
     tools = []
     mcp_servers = []
@@ -16,11 +18,16 @@ class _Payload:
 
 class _Artifacts:
     def __init__(self, root: Path) -> None:
+        self.profile = "dev"
         self.artifacts_root = root
+        self.artifact_contract_path = root / "artifact_bundle.contract.json"
+        self.adapter_health_path = root / "adapter_health" / "adapter_run_summary.json"
         self.audit_path = root / "audit.jsonl"
         self.eval_jsonl_path = root / "evals" / "suite.jsonl"
         self.eval_summary_path = root / "evals" / "suite.summary.json"
         self.launch_gate_path = root / "launch_gate" / "security-readiness.json"
+        self.integrity_manifest_path = root / "artifact_integrity.manifest.json"
+        self.compatibility_decisions = []
 
 
 def test_verify_expected_outputs_reports_missing_replay_and_launch_gate_json(tmp_path) -> None:
@@ -28,6 +35,9 @@ def test_verify_expected_outputs_reports_missing_replay_and_launch_gate_json(tmp
     (root / "replay").mkdir(parents=True, exist_ok=True)
     (root / "launch_gate").mkdir(parents=True, exist_ok=True)
     (root / "evals").mkdir(parents=True, exist_ok=True)
+    (root / "adapter_health").mkdir(parents=True, exist_ok=True)
+    (root / "adapter_health" / "adapter_run_summary.json").write_text("{}", encoding="utf-8")
+    (root / "artifact_bundle.contract.json").write_text("{}", encoding="utf-8")
     (root / "audit.jsonl").write_text("", encoding="utf-8")
     (root / "connectors.inventory.json").write_text("[]", encoding="utf-8")
     (root / "tools.inventory.json").write_text("[]", encoding="utf-8")
@@ -44,7 +54,7 @@ def test_evidence_pipeline_returns_nonzero_when_required_outputs_missing(tmp_pat
     root.mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(evidence_pipeline, "collect_from_onyx", lambda force_demo: _Payload())
-    monkeypatch.setattr(evidence_pipeline, "generate_artifacts", lambda force_demo: _Artifacts(root))
+    monkeypatch.setattr(evidence_pipeline, "generate_artifacts", lambda force_demo, config=None: _Artifacts(root))
     seen = {}
 
     def _run_launch_gate(*, config):

@@ -9,5 +9,19 @@ description = "Non-invasive artifact adapter between Onyx runtime and AI Trust s
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+]
+
+[project.scripts]
+integration-adapter-collect = "integration_adapter.collect_from_onyx:main"
+integration-adapter-generate = "integration_adapter.generate_artifacts:main"
+integration-adapter-gate = "integration_adapter.run_launch_gate:main"
+integration-adapter-evidence = "integration_adapter.evidence_pipeline:main"
+integration-adapter-validate = "integration_adapter.validate_config:main"
+integration-adapter-ci-smoke = "integration_adapter.ci_smoke:main"
+integration-adapter-verify-integrity = "integration_adapter.verify_artifact_integrity:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

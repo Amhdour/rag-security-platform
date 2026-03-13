@@ -4,6 +4,8 @@ import argparse
 import sys
 from pathlib import Path
 
+import os
+
 from integration_adapter.config import AdapterConfig
 from integration_adapter.pipeline import run_launch_gate
 
@@ -11,9 +13,16 @@ from integration_adapter.pipeline import run_launch_gate
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run launch-gate evaluation for generated artifacts")
     parser.add_argument("--artifacts-root", default=None, help="override artifacts root for this run")
+    parser.add_argument("--profile", default=None, choices=["demo", "dev", "ci", "prod_like"], help="execution profile override")
     args = parser.parse_args()
 
-    config = AdapterConfig(artifacts_root=Path(args.artifacts_root)) if args.artifacts_root else None
+    if args.artifacts_root or args.profile:
+        base = AdapterConfig.from_env(default_root="artifacts/logs")
+        root = Path(args.artifacts_root) if args.artifacts_root else base.artifacts_root
+        profile = args.profile or os.environ.get("INTEGRATION_ADAPTER_PROFILE", base.profile)
+        config = AdapterConfig(artifacts_root=root, profile=profile)
+    else:
+        config = None
 
     try:
         output = run_launch_gate(config=config)

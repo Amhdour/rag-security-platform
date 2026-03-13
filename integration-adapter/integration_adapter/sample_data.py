@@ -37,10 +37,11 @@ def generate_sample_artifacts() -> None:
         ]
     )
 
-    writer.write_inventory_snapshot(domain="connectors", rows=connectors)
-    writer.write_inventory_snapshot(domain="tools", rows=tools)
-    writer.write_inventory_snapshot(domain="mcp_servers", rows=mcp_servers)
-    writer.write_inventory_snapshot(domain="evals", rows=evals)
+    contract_path = writer.write_bundle_contract()
+    connectors_path = writer.write_inventory_snapshot(domain="connectors", rows=connectors)
+    tools_path = writer.write_inventory_snapshot(domain="tools", rows=tools)
+    mcp_path = writer.write_inventory_snapshot(domain="mcp_servers", rows=mcp_servers)
+    eval_inventory_path = writer.write_inventory_snapshot(domain="evals", rows=evals)
 
     raw_events = [
         {"request_id": "req-1", "trace_id": "trace-1", "event_type": "request.start", "actor_id": "user-1", "tenant_id": "tenant-a", "event_payload": {"entrypoint": "chat"}},
@@ -50,16 +51,31 @@ def generate_sample_artifacts() -> None:
         {"request_id": "req-1", "trace_id": "trace-1", "event_type": "request.end", "actor_id": "orchestrator", "tenant_id": "tenant-a", "event_payload": {"outcome": "success"}},
     ]
     events = [map_runtime_event(row) for row in raw_events]
-    writer.write_audit_events(events)
-    writer.write_replay(replay_id="trace-1", payload={"trace_id": "trace-1", "request_id": "req-1", "events": [event.to_dict() for event in events]})
-    writer.write_eval_results(
+    audit_path = writer.write_audit_events(events)
+    replay_path = writer.write_replay(replay_id="trace-1", payload={"trace_id": "trace-1", "request_id": "req-1", "events": [event.to_dict() for event in events]})
+    eval_jsonl_path, eval_summary_path = writer.write_eval_results(
         run_id="sample-security",
         rows=[
             {"scenario_id": "prompt_injection_direct", "outcome": "pass", "severity": "high"},
             {"scenario_id": "policy_bypass_attempt", "outcome": "fail", "severity": "critical"},
         ],
     )
-    writer.write_launch_gate_summary(statuses=["pass", "pass", "fail"], blockers=["policy_bypass_attempt failed"], residual_risks=["mcp usage model incomplete"])
+    launch_gate_path = writer.write_launch_gate_summary(statuses=["pass", "pass", "fail"], blockers=["policy_bypass_attempt failed"], residual_risks=["mcp usage model incomplete"])
+
+    writer.write_integrity_manifest(
+        file_paths=[
+            contract_path,
+            connectors_path,
+            tools_path,
+            mcp_path,
+            eval_inventory_path,
+            audit_path,
+            replay_path,
+            eval_jsonl_path,
+            eval_summary_path,
+            launch_gate_path,
+        ]
+    )
 
 
 if __name__ == "__main__":

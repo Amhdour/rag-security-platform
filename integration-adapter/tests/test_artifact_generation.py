@@ -27,3 +27,16 @@ def test_writer_emits_eval_summary(tmp_path) -> None:
     payload = json.loads(summary.read_text())
     assert payload["total"] == 2
     assert payload["passed_count"] == 1
+
+
+def test_sample_generator_writes_versioned_contract_manifest(tmp_path) -> None:
+    import os
+
+    os.environ["INTEGRATION_ADAPTER_ARTIFACTS_ROOT"] = str(tmp_path / "artifacts" / "logs")
+    generate_sample_artifacts()
+
+    root = tmp_path / "artifacts" / "logs"
+    contract = json.loads((root / "artifact_bundle.contract.json").read_text())
+    assert contract["artifact_bundle_schema_version"] == "1.0"
+    assert contract["normalized_schema_version"] == "1.0"
+    assert contract["source_schema_version"] == "1.0"
