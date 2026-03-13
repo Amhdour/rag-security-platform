@@ -34,10 +34,13 @@ from integration_adapter.raw_sources import (
     discover_default_paths,
     env_path,
     load_json_records,
+    load_json_records_from_url,
     load_jsonl_records,
+    load_jsonl_records_from_url,
 )
 
 SOURCE_MODE_LIVE = "live"
+SOURCE_MODE_SERVICE_API = "service_api"
 SOURCE_MODE_DB_BACKED = "db_backed"
 SOURCE_MODE_FILE_BACKED = "file_backed"
 SOURCE_MODE_FIXTURE_BACKED = "fixture_backed"
@@ -164,6 +167,25 @@ class _BaseExporter:
     def _record_acquisition(self, result: AcquisitionResult) -> None:
         self.last_acquisition = result
 
+
+    def _service_api_url(self, env_name: str) -> str | None:
+        value = os.environ.get(env_name, "").strip()
+        return value or None
+
+    def _read_service_json_records(self, url: str) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+        try:
+            rows = load_json_records_from_url(url)
+            return rows, [], []
+        except SourceReadError as exc:
+            return [], [], [f"malformed service JSON source at {url}: {exc}"]
+
+    def _read_service_jsonl_records(self, url: str) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+        try:
+            rows = load_jsonl_records_from_url(url)
+            return rows, [], []
+        except SourceReadError as exc:
+            return [], [], [f"malformed service JSONL source at {url}: {exc}"]
+
     def _attach_source_metadata(
         self,
         rows: list[dict[str, Any]],
@@ -241,28 +263,60 @@ class ConnectorInventoryExporter(_BaseExporter):
                         )
                     return rows, [], []
         except Exception as exc:
-            return [], [], [f"db extraction failed for connectors: {exc}"]
+            return [], [f"db extraction unavailable for connectors: {exc}"], []
+
+    def _read_from_service_api(self) -> tuple[list[dict[str, Any]], list[str], list[str], str]:
+        url = self._service_api_url("INTEGRATION_ADAPTER_ONYX_CONNECTORS_SERVICE_API")
+        if not url:
+            return [], [], [], ""
+        rows, warnings, errors = self._read_service_json_records(url)
+        return rows, warnings, errors, url
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_CONNECTORS_JSON", "connectors")
         file_rows, file_warnings, file_errors = self._read_json_records(path)
-        source_mode = _classify_path_source_mode(path)
+
+        rows: list[dict[str, Any]] = []
+        warnings: list[str] = []
+        errors: list[str] = []
+        source_mode = SOURCE_MODE_SYNTHETIC
+        source_path = "synthetic"
         used_fallback = False
 
-        rows = file_rows
-        warnings = list(file_warnings)
-        errors = list(file_errors)
-        source_path = str(path)
-
+        # precedence: live runtime > service_api > db_backed > file_backed > fixture_backed > synthetic
+        live_rows, live_warnings, live_errors = self._read_from_onyx_db()
+        warnings.extend(live_warnings)
+        errors.extend(live_errors)
+        if live_rows and os.getenv("INTEGRATION_ADAPTER_DB_SOURCE_MODE_LIVE", "").strip().lower() in {"1", "true", "yes"}:
+            rows = live_rows
+            source_mode = SOURCE_MODE_LIVE
+            source_path = "onyx.db.connector.fetch_connectors"
+            used_fallback = False
         if not rows:
-            db_rows, db_warnings, db_errors = self._read_from_onyx_db()
-            warnings.extend(db_warnings)
-            errors.extend(db_errors)
-            if db_rows:
-                rows = db_rows
-                source_mode = _db_source_mode()
-                source_path = "onyx.db.connector.fetch_connectors"
+            svc_rows, svc_warnings, svc_errors, svc_path = self._read_from_service_api()
+            warnings.extend(svc_warnings)
+            errors.extend(svc_errors)
+            if svc_rows:
+                rows = svc_rows
+                source_mode = SOURCE_MODE_SERVICE_API
+                source_path = svc_path
                 used_fallback = True
+        if not rows and live_rows:
+            rows = live_rows
+            source_mode = SOURCE_MODE_DB_BACKED
+            source_path = "onyx.db.connector.fetch_connectors"
+            used_fallback = True
+        if not rows:
+            rows = file_rows
+            warnings.extend(file_warnings)
+            errors.extend(file_errors)
+            if rows:
+                source_mode = _classify_path_source_mode(path)
+                source_path = str(path)
+                used_fallback = True
+            else:
+                warnings.append("no connector rows from live/service/db/file; synthetic fallback metadata only")
+                source_path = str(path)
 
         valid_rows, dropped = _safe_validate_inventory_rows(_to_rows(rows))
         if dropped:
@@ -348,27 +402,59 @@ class ToolInventoryExporter(_BaseExporter):
                         )
                     return rows, [], []
         except Exception as exc:
-            return [], [], [f"db extraction failed for tools: {exc}"]
+            return [], [f"db extraction unavailable for tools: {exc}"], []
+
+    def _read_from_service_api(self) -> tuple[list[dict[str, Any]], list[str], list[str], str]:
+        url = self._service_api_url("INTEGRATION_ADAPTER_ONYX_TOOLS_SERVICE_API")
+        if not url:
+            return [], [], [], ""
+        rows, warnings, errors = self._read_service_json_records(url)
+        return rows, warnings, errors, url
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_TOOLS_JSON", "tools")
         file_rows, file_warnings, file_errors = self._read_json_records(path)
-        rows = file_rows
-        warnings = list(file_warnings)
-        errors = list(file_errors)
-        source_mode = _classify_path_source_mode(path)
-        source_path = str(path)
+
+        rows: list[dict[str, Any]] = []
+        warnings: list[str] = []
+        errors: list[str] = []
+        source_mode = SOURCE_MODE_SYNTHETIC
+        source_path = "synthetic"
         used_fallback = False
 
+        live_rows, live_warnings, live_errors = self._read_from_onyx_db()
+        warnings.extend(live_warnings)
+        errors.extend(live_errors)
+        if live_rows and os.getenv("INTEGRATION_ADAPTER_DB_SOURCE_MODE_LIVE", "").strip().lower() in {"1", "true", "yes"}:
+            rows = live_rows
+            source_mode = SOURCE_MODE_LIVE
+            source_path = "onyx.db.tools.get_tools"
+            used_fallback = False
         if not rows:
-            db_rows, db_warnings, db_errors = self._read_from_onyx_db()
-            warnings.extend(db_warnings)
-            errors.extend(db_errors)
-            if db_rows:
-                rows = db_rows
-                source_mode = _db_source_mode()
-                source_path = "onyx.db.tools.get_tools"
+            svc_rows, svc_warnings, svc_errors, svc_path = self._read_from_service_api()
+            warnings.extend(svc_warnings)
+            errors.extend(svc_errors)
+            if svc_rows:
+                rows = svc_rows
+                source_mode = SOURCE_MODE_SERVICE_API
+                source_path = svc_path
                 used_fallback = True
+        if not rows and live_rows:
+            rows = live_rows
+            source_mode = SOURCE_MODE_DB_BACKED
+            source_path = "onyx.db.tools.get_tools"
+            used_fallback = True
+        if not rows:
+            rows = file_rows
+            warnings.extend(file_warnings)
+            errors.extend(file_errors)
+            if rows:
+                source_mode = _classify_path_source_mode(path)
+                source_path = str(path)
+                used_fallback = True
+            else:
+                warnings.append("no tool rows from live/service/db/file; synthetic fallback metadata only")
+                source_path = str(path)
 
         valid_rows, dropped = _safe_validate_inventory_rows(_to_rows(rows))
         if dropped:
@@ -450,27 +536,59 @@ class MCPInventoryExporter(_BaseExporter):
                         )
                     return rows, [], []
         except Exception as exc:
-            return [], [], [f"db extraction failed for mcp: {exc}"]
+            return [], [f"db extraction unavailable for mcp: {exc}"], []
+
+    def _read_from_service_api(self) -> tuple[list[dict[str, Any]], list[str], list[str], str]:
+        url = self._service_api_url("INTEGRATION_ADAPTER_ONYX_MCP_SERVICE_API")
+        if not url:
+            return [], [], [], ""
+        rows, warnings, errors = self._read_service_json_records(url)
+        return rows, warnings, errors, url
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_MCP_JSON", "mcp_servers")
         file_rows, file_warnings, file_errors = self._read_json_records(path)
-        rows = file_rows
-        warnings = list(file_warnings)
-        errors = list(file_errors)
-        source_mode = _classify_path_source_mode(path)
-        source_path = str(path)
+
+        rows: list[dict[str, Any]] = []
+        warnings: list[str] = []
+        errors: list[str] = []
+        source_mode = SOURCE_MODE_SYNTHETIC
+        source_path = "synthetic"
         used_fallback = False
 
+        live_rows, live_warnings, live_errors = self._read_from_onyx_db()
+        warnings.extend(live_warnings)
+        errors.extend(live_errors)
+        if live_rows and os.getenv("INTEGRATION_ADAPTER_DB_SOURCE_MODE_LIVE", "").strip().lower() in {"1", "true", "yes"}:
+            rows = live_rows
+            source_mode = SOURCE_MODE_LIVE
+            source_path = "onyx.db.mcp.get_all_mcp_servers"
+            used_fallback = False
         if not rows:
-            db_rows, db_warnings, db_errors = self._read_from_onyx_db()
-            warnings.extend(db_warnings)
-            errors.extend(db_errors)
-            if db_rows:
-                rows = db_rows
-                source_mode = _db_source_mode()
-                source_path = "onyx.db.mcp.get_all_mcp_servers"
+            svc_rows, svc_warnings, svc_errors, svc_path = self._read_from_service_api()
+            warnings.extend(svc_warnings)
+            errors.extend(svc_errors)
+            if svc_rows:
+                rows = svc_rows
+                source_mode = SOURCE_MODE_SERVICE_API
+                source_path = svc_path
                 used_fallback = True
+        if not rows and live_rows:
+            rows = live_rows
+            source_mode = SOURCE_MODE_DB_BACKED
+            source_path = "onyx.db.mcp.get_all_mcp_servers"
+            used_fallback = True
+        if not rows:
+            rows = file_rows
+            warnings.extend(file_warnings)
+            errors.extend(file_errors)
+            if rows:
+                source_mode = _classify_path_source_mode(path)
+                source_path = str(path)
+                used_fallback = True
+            else:
+                warnings.append("no mcp rows from live/service/db/file; synthetic fallback metadata only")
+                source_path = str(path)
 
         valid_rows, dropped = _safe_validate_inventory_rows(_to_rows(rows))
         if dropped:
@@ -534,7 +652,7 @@ class EvalResultsExporter(_BaseExporter):
                 dataset_names = _runtime_import("onyx.configs.app_configs", "SCHEDULED_EVAL_DATASET_NAMES")
                 project_name = _runtime_import("onyx.configs.app_configs", "SCHEDULED_EVAL_PROJECT")
         except Exception as exc:
-            return [], [], [f"runtime config extraction failed for evals: {exc}"]
+            return [], [f"runtime config extraction unavailable for evals: {exc}"], []
 
         rows: list[dict[str, Any]] = []
         for index, dataset in enumerate(dataset_names or [], start=1):
@@ -553,25 +671,57 @@ class EvalResultsExporter(_BaseExporter):
             )
         return rows, [], []
 
+    def _read_from_service_api(self) -> tuple[list[dict[str, Any]], list[str], list[str], str]:
+        url = self._service_api_url("INTEGRATION_ADAPTER_ONYX_EVALS_SERVICE_API")
+        if not url:
+            return [], [], [], ""
+        rows, warnings, errors = self._read_service_json_records(url)
+        return rows, warnings, errors, url
+
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_EVALS_JSON", "evals")
         file_rows, file_warnings, file_errors = self._read_json_records(path)
-        rows = file_rows
-        warnings = list(file_warnings)
-        errors = list(file_errors)
-        source_mode = _classify_path_source_mode(path)
-        source_path = str(path)
+
+        rows: list[dict[str, Any]] = []
+        warnings: list[str] = []
+        errors: list[str] = []
+        source_mode = SOURCE_MODE_SYNTHETIC
+        source_path = "synthetic"
         used_fallback = False
 
+        cfg_rows, cfg_warnings, cfg_errors = self._read_from_onyx_runtime_config()
+        warnings.extend(cfg_warnings)
+        errors.extend(cfg_errors)
+        if cfg_rows and os.getenv("INTEGRATION_ADAPTER_EVAL_CONFIG_AS_LIVE", "").strip().lower() in {"1", "true", "yes"}:
+            rows = cfg_rows
+            source_mode = SOURCE_MODE_LIVE
+            source_path = "onyx.configs.app_configs"
+            used_fallback = False
         if not rows:
-            cfg_rows, cfg_warnings, cfg_errors = self._read_from_onyx_runtime_config()
-            warnings.extend(cfg_warnings)
-            errors.extend(cfg_errors)
-            if cfg_rows:
-                rows = cfg_rows
-                source_mode = SOURCE_MODE_DB_BACKED
-                source_path = "onyx.configs.app_configs"
+            svc_rows, svc_warnings, svc_errors, svc_path = self._read_from_service_api()
+            warnings.extend(svc_warnings)
+            errors.extend(svc_errors)
+            if svc_rows:
+                rows = svc_rows
+                source_mode = SOURCE_MODE_SERVICE_API
+                source_path = svc_path
                 used_fallback = True
+        if not rows and cfg_rows:
+            rows = cfg_rows
+            source_mode = SOURCE_MODE_DB_BACKED
+            source_path = "onyx.configs.app_configs"
+            used_fallback = True
+        if not rows:
+            rows = file_rows
+            warnings.extend(file_warnings)
+            errors.extend(file_errors)
+            if rows:
+                source_mode = _classify_path_source_mode(path)
+                source_path = str(path)
+                used_fallback = True
+            else:
+                warnings.append("no eval rows from live/service/db/file; synthetic fallback metadata only")
+                source_path = str(path)
 
         valid_rows, dropped = _safe_validate_inventory_rows(_to_rows(rows))
         if dropped:
@@ -693,27 +843,72 @@ class RuntimeEventsExporter(_BaseExporter):
                     )
                 return rows, [], []
         except Exception as exc:
-            return [], [], [f"db extraction failed for runtime events: {exc}"]
+            return [], [f"db extraction unavailable for runtime events: {exc}"], []
+
+    def _read_from_live_runtime_logs(self) -> tuple[list[dict[str, Any]], list[str], list[str], str]:
+        live_path = env_path("INTEGRATION_ADAPTER_ONYX_RUNTIME_LOG_JSONL")
+        if live_path is None:
+            return [], [], [], ""
+        rows, warnings, errors = self._read_jsonl_records(live_path)
+        return rows, warnings, errors, str(live_path)
+
+    def _read_from_service_api(self) -> tuple[list[dict[str, Any]], list[str], list[str], str]:
+        url = self._service_api_url("INTEGRATION_ADAPTER_ONYX_RUNTIME_EVENTS_SERVICE_API")
+        if not url:
+            return [], [], [], ""
+        rows, warnings, errors = self._read_service_jsonl_records(url)
+        return rows, warnings, errors, url
 
     def export(self) -> list[dict[str, Any]]:
         path = self._source_path("INTEGRATION_ADAPTER_ONYX_RUNTIME_EVENTS_JSONL", "runtime_events")
         file_rows, file_warnings, file_errors = self._read_jsonl_records(path)
-        rows = file_rows
-        warnings = list(file_warnings)
-        errors = list(file_errors)
-        source_mode = _classify_path_source_mode(path)
-        source_path = str(path)
+
+        rows: list[dict[str, Any]] = []
+        warnings: list[str] = []
+        errors: list[str] = []
+        source_mode = SOURCE_MODE_SYNTHETIC
+        source_path = "synthetic"
         used_fallback = False
 
+        live_rows, live_warnings, live_errors, live_path = self._read_from_live_runtime_logs()
+        warnings.extend(live_warnings)
+        errors.extend(live_errors)
+        if live_rows:
+            rows = live_rows
+            source_mode = SOURCE_MODE_LIVE
+            source_path = live_path
+            used_fallback = False
+
         if not rows:
-            db_rows, db_warnings, db_errors = self._read_from_onyx_db()
-            warnings.extend(db_warnings)
-            errors.extend(db_errors)
-            if db_rows:
-                rows = db_rows
-                source_mode = _db_source_mode()
-                source_path = "onyx.db.models.ChatSession/ToolCall"
+            svc_rows, svc_warnings, svc_errors, svc_path = self._read_from_service_api()
+            warnings.extend(svc_warnings)
+            errors.extend(svc_errors)
+            if svc_rows:
+                rows = svc_rows
+                source_mode = SOURCE_MODE_SERVICE_API
+                source_path = svc_path
                 used_fallback = True
+
+        db_rows, db_warnings, db_errors = self._read_from_onyx_db()
+        warnings.extend(db_warnings)
+        errors.extend(db_errors)
+        if not rows and db_rows:
+            rows = db_rows
+            source_mode = _db_source_mode()
+            source_path = "onyx.db.models.ChatSession/ToolCall"
+            used_fallback = True
+
+        if not rows:
+            rows = file_rows
+            warnings.extend(file_warnings)
+            errors.extend(file_errors)
+            if rows:
+                source_mode = _classify_path_source_mode(path)
+                source_path = str(path)
+                used_fallback = True
+            else:
+                warnings.append("no runtime rows from live/service/db/file; synthetic fallback metadata only")
+                source_path = str(path)
 
         valid_dict_rows = _to_rows(rows)
         dropped = len(rows) - len(valid_dict_rows)

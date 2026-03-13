@@ -111,7 +111,14 @@ class ArtifactWriter:
         return path
 
     def write_integrity_manifest(self, *, file_paths: list[Path]) -> Path:
-        return build_integrity_manifest(artifacts_root=self.root, file_paths=file_paths)
+        return build_integrity_manifest(
+            artifacts_root=self.root,
+            file_paths=file_paths,
+            integrity_mode=self.config.integrity_mode,
+            signing_key=self.config.integrity_signing_key,
+            signing_key_path=self.config.integrity_signing_key_path,
+            signing_key_id=self.config.integrity_signing_key_id,
+        )
 
 
     def write_adapter_health_summary(self, payload: dict[str, object]) -> Path:

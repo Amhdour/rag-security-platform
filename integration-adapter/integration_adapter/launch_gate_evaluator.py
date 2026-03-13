@@ -956,9 +956,15 @@ class LaunchGateEvaluator:
 
 
     def _check_artifact_integrity_manifest(self) -> GateCheck:
+        integrity_mode = os.getenv("INTEGRATION_ADAPTER_INTEGRITY_MODE")
+        signing_key = os.getenv("INTEGRATION_ADAPTER_INTEGRITY_SIGNING_KEY")
+        signing_key_path = os.getenv("INTEGRATION_ADAPTER_INTEGRITY_SIGNING_KEY_PATH")
         result = verify_integrity_manifest(
             artifacts_root=self.artifacts_root,
             required_paths=INTEGRITY_REQUIRED_PATHS,
+            integrity_mode=integrity_mode,
+            signing_key=signing_key,
+            signing_key_path=Path(signing_key_path) if signing_key_path else None,
         )
         if not result.ok:
             return GateCheck(

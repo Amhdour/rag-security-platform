@@ -81,3 +81,36 @@ def test_validate_configuration_fails_on_unknown_profile(tmp_path) -> None:
 
     assert report.status == "fail"
     assert any(issue.field == "INTEGRATION_ADAPTER_PROFILE" for issue in report.issues)
+
+
+def test_validate_configuration_fails_when_signed_mode_missing_key(tmp_path) -> None:
+    report = validate_configuration(
+        config=AdapterConfig(
+            artifacts_root=tmp_path / "artifacts" / "logs",
+            profile="dev",
+            integrity_mode="signed_manifest",
+            integrity_signing_key=None,
+            integrity_signing_key_path=None,
+        ),
+        strict_sources=False,
+    )
+
+    assert report.status == "fail"
+    assert any(issue.field == "INTEGRITY_SIGNING_KEY" for issue in report.issues)
+
+
+def test_validate_configuration_passes_when_signed_mode_has_key_file(tmp_path) -> None:
+    key = tmp_path / "signing.key"
+    key.write_text("dev-secret", encoding="utf-8")
+
+    report = validate_configuration(
+        config=AdapterConfig(
+            artifacts_root=tmp_path / "artifacts" / "logs",
+            profile="dev",
+            integrity_mode="signed_manifest",
+            integrity_signing_key_path=key,
+        ),
+        strict_sources=False,
+    )
+
+    assert report.status == "pass"

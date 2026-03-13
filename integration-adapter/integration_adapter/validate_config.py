@@ -10,6 +10,7 @@ from typing import Any
 
 from integration_adapter.config import AdapterConfig
 from integration_adapter.env_profiles import get_profile_policy
+from integration_adapter.integrity import ALLOWED_INTEGRITY_MODES, INTEGRITY_MODE_SIGNED_MANIFEST
 from integration_adapter.raw_sources import load_json_records, load_jsonl_records
 
 SOURCE_ENV_VARS: dict[str, str] = {
@@ -77,6 +78,28 @@ def validate_configuration(*, config: AdapterConfig, strict_sources: bool = Fals
         issues.append(ValidationIssue(level="error", field="INTEGRATION_ADAPTER_PROFILE", message=str(exc)))
         profile_policy = {}
 
+
+    integrity_mode = config.integrity_mode.strip().lower()
+    if integrity_mode not in ALLOWED_INTEGRITY_MODES:
+        issues.append(
+            ValidationIssue(
+                level="error",
+                field="INTEGRATION_ADAPTER_INTEGRITY_MODE",
+                message=f"unsupported integrity mode={config.integrity_mode!r}; expected one of {sorted(ALLOWED_INTEGRITY_MODES)}",
+            )
+        )
+    if integrity_mode == INTEGRITY_MODE_SIGNED_MANIFEST:
+        has_inline_key = bool((config.integrity_signing_key or "").strip())
+        has_key_file = bool(config.integrity_signing_key_path and config.integrity_signing_key_path.exists() and config.integrity_signing_key_path.is_file())
+        if not has_inline_key and not has_key_file:
+            issues.append(
+                ValidationIssue(
+                    level="error",
+                    field="INTEGRITY_SIGNING_KEY",
+                    message="signed_manifest mode requires INTEGRATION_ADAPTER_INTEGRITY_SIGNING_KEY or INTEGRATION_ADAPTER_INTEGRITY_SIGNING_KEY_PATH",
+                )
+            )
+
     if config.artifacts_root.exists() and not config.artifacts_root.is_dir():
         issues.append(ValidationIssue(level="error", field="INTEGRATION_ADAPTER_ARTIFACTS_ROOT", message="artifacts root exists but is not a directory"))
     else:
@@ -142,7 +165,14 @@ def main() -> int:
         base = AdapterConfig.from_env()
         root = Path(args.artifacts_root) if args.artifacts_root else base.artifacts_root
         profile = args.profile or os.environ.get("INTEGRATION_ADAPTER_PROFILE", base.profile)
-        config = AdapterConfig(artifacts_root=root, profile=profile)
+        config = AdapterConfig(
+            artifacts_root=root,
+            profile=profile,
+            integrity_mode=base.integrity_mode,
+            integrity_signing_key=base.integrity_signing_key,
+            integrity_signing_key_path=base.integrity_signing_key_path,
+            integrity_signing_key_id=base.integrity_signing_key_id,
+        )
     else:
         config = AdapterConfig.from_env()
     report = validate_configuration(config=config, strict_sources=args.strict_sources)

@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import json
 
-from integration_adapter.raw_sources import SourceReadError, load_json_records, load_jsonl_records
+from integration_adapter.raw_sources import (
+    SourceReadError,
+    load_json_records,
+    load_json_records_from_url,
+    load_jsonl_records,
+    load_jsonl_records_from_url,
+)
 
 
 def test_load_json_records_accepts_list_and_rows_wrapper(tmp_path) -> None:
@@ -32,3 +38,22 @@ def test_load_jsonl_records_skips_malformed_lines(tmp_path) -> None:
     )
 
     assert load_jsonl_records(path) == [{"a": 1}, {"b": 2}]
+
+
+def test_load_json_records_from_url(monkeypatch) -> None:
+    monkeypatch.setattr("integration_adapter.raw_sources._load_url_text", lambda _url, timeout_seconds=5.0: '[{"id": 1}, {"id": 2}]')
+    rows = load_json_records_from_url("https://onyx.local/api/connectors")
+    assert rows == [{"id": 1}, {"id": 2}]
+
+
+def test_load_jsonl_records_from_url_skips_malformed(monkeypatch) -> None:
+    payload = '{"a":1}\n{bad\n[1,2]\n{"b":2}'
+    monkeypatch.setattr("integration_adapter.raw_sources._load_url_text", lambda _url, timeout_seconds=5.0: payload)
+    rows = load_jsonl_records_from_url("https://onyx.local/api/events")
+    assert rows == [{"a": 1}, {"b": 2}]
+
+
+def test_load_json_records_from_url_raises_on_malformed_json(monkeypatch) -> None:
+    monkeypatch.setattr("integration_adapter.raw_sources._load_url_text", lambda _url, timeout_seconds=5.0: '{bad')
+    with __import__("pytest").raises(SourceReadError):
+        load_json_records_from_url("https://onyx.local/api/connectors")
