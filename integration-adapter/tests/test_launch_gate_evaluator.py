@@ -60,9 +60,15 @@ def test_launch_gate_evaluator_pass(tmp_path) -> None:
 
     evaluator = LaunchGateEvaluator(root)
     result = evaluator.evaluate()
+    json_path, md_path = evaluator.write_outputs(result)
 
     assert result.status == GO
     assert not result.blockers
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["evidence_status"]["present"] is True
+    assert payload["evidence_status"]["incomplete"] is False
+    assert payload["control_assessment"]["proven"] is False
+    assert "control_proven: **False**" in md_path.read_text(encoding="utf-8")
 
 
 def test_launch_gate_evaluator_warn(tmp_path) -> None:
@@ -105,3 +111,21 @@ def test_launch_gate_evaluator_fail_on_critical_eval(tmp_path) -> None:
     assert result.blockers
     assert json_path.is_file()
     assert md_path.is_file()
+
+
+def test_launch_gate_evaluator_fail_closed_on_schema_malformed(tmp_path) -> None:
+    root = tmp_path / "artifacts" / "logs"
+    _seed_base_artifacts(root)
+
+    (root / "tools.inventory.json").write_text(
+        json.dumps([
+            {"domain": "tools", "record_id": "tool-1", "name": "search", "status": "enabled", "metadata": "invalid"}
+        ]),
+        encoding="utf-8",
+    )
+
+    evaluator = LaunchGateEvaluator(root)
+    result = evaluator.evaluate()
+
+    assert result.status == NO_GO
+    assert any("artifact_schema_validity" in item for item in result.blockers)

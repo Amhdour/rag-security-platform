@@ -45,3 +45,22 @@ def test_schema_validation_accepts_error_event_and_audit_context() -> None:
     payload = event.to_dict()
     assert payload["session_id"] == "adapter-session"
     assert payload["actor_type"] == "assistant_runtime"
+    assert payload["persona_or_agent_id"] == "unavailable"
+    assert payload["authz_result"] == "unavailable"
+
+
+def test_schema_validation_rejects_non_list_delegation_chain() -> None:
+    event = NormalizedAuditEvent(
+        event_id="evt-x",
+        trace_id="trace-x",
+        request_id="req-x",
+        event_type="request.start",
+        actor_id="actor-x",
+        tenant_id="tenant-x",
+        delegation_chain="not-a-list",  # type: ignore[arg-type]
+    )
+    try:
+        event.to_dict()
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "delegation_chain" in str(exc)

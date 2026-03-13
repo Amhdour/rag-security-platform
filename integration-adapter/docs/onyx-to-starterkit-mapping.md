@@ -56,3 +56,28 @@ The following fields require confirmation from concrete Onyx runtime paths befor
 3. MCP usage feed and decision status semantics.
 4. Eval output shape compatibility across local and remote eval providers.
 5. Canonical lifecycle event stream source for request/policy/deny/fallback events.
+
+
+## Normalized identity/authz mapping layer
+
+For `audit.jsonl` events, the adapter records normalized identity/authz evidence:
+
+- `actor_id`, `tenant_id`, `session_id`
+- `persona_or_agent_id`
+- `tool_invocation_id`
+- `delegation_chain`
+- `decision_basis`
+- `resource_scope`
+- `authz_result`
+- `identity_authz_field_sources`
+
+`identity_authz_field_sources` marks each field as:
+- `sourced`: directly read from runtime payload/hook
+- `derived`: inferred deterministically by adapter
+- `unavailable`: no trustworthy source found in this workspace
+
+### Proven vs inferred
+
+- **Implemented/Proven in artifact output:** normalized fields and source markers are emitted in `audit.jsonl`.
+- **Partially Implemented:** some fields are derived from adjacent runtime fields where direct hooks are unavailable.
+- **Unconfirmed:** canonical production identity/delegation hook locations and semantics remain deployment-dependent.

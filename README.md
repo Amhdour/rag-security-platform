@@ -6,7 +6,7 @@ Integration workspace for a **three-plane architecture**:
 - **`myStarterKit-maindashb-main/`** = governance/evidence/launch-gate/read-only dashboard plane.
 - **`integration-adapter/`** = translation plane that normalizes runtime state/events into Starter Kit-compatible artifacts.
 
-This repository intentionally keeps these planes separated rather than merging upstream codebases.
+**Implemented:** This repository intentionally keeps these planes separated rather than merging upstream codebases.
 
 ## Repository purpose
 
@@ -15,7 +15,7 @@ This repository intentionally keeps these planes separated rather than merging u
 3. Produce artifact evidence consumable by governance/launch-gate workflows.
 4. Keep dashboard behavior read-only and artifact-driven.
 
-See `docs/integration-blueprint.md` for architecture notes and constraints.
+**Implemented:** See `docs/integration-blueprint.md` for architecture notes and constraints.
 
 ## Architecture at a glance
 
@@ -26,7 +26,7 @@ See `docs/integration-blueprint.md` for architecture notes and constraints.
 ## Implementation status (claims audit)
 
 ### Implemented
-- Adapter schema validation and normalization pipeline for inventory/events/evals.
+- Adapter schema validation and normalization pipeline for inventory/events/evals, including normalized identity/authorization evidence fields with sourced/derived/unavailable markers.
 - Artifact generation commands and output writing (`audit`, `replay`, `eval`, `launch_gate`).
 - Evidence-based launch-gate evaluator (artifact quality/presence checks).
 - Read-only Starter Kit dashboard artifact parsing compatibility for generated artifacts.
@@ -55,6 +55,7 @@ See `docs/integration-blueprint.md` for architecture notes and constraints.
 - `docs/upstream-provenance.md`
 - `docs/compatibility-matrix.md`
 - `docs/maturity-model.md`
+- `docs/threat-model.md`
 
 ## Tests
 
@@ -74,9 +75,11 @@ pytest -q
 
 ### Onyx
 
-Onyx has broader env/service requirements; see `onyx-main/AGENTS.md` and `onyx-main/README.md`.
+**Implemented:** Onyx has broader env/service requirements; see `onyx-main/AGENTS.md` and `onyx-main/README.md`.
 
 ## Evidence generation pipeline
+
+Preferred command path (step-by-step):
 
 ```bash
 cd integration-adapter
@@ -85,17 +88,25 @@ python -m integration_adapter.generate_artifacts
 python -m integration_adapter.run_launch_gate
 ```
 
-Or:
+One-command pipeline (repo root):
 
 ```bash
 make evidence
 ```
 
+**Implemented:** This executes collection, artifact generation, launch-gate evaluation, verifies required output files, and returns non-zero on fatal pipeline failures.
+
 Demo mode:
 
 ```bash
+make evidence-demo
+```
+
+Or directly:
+
+```bash
 cd integration-adapter
-python -m integration_adapter.generate_artifacts --demo
+python -m integration_adapter.evidence_pipeline --demo
 ```
 
 Expected outputs under `artifacts/logs`:
@@ -105,17 +116,37 @@ Expected outputs under `artifacts/logs`:
 - `launch_gate/*.json` and `launch_gate/*.md`
 
 > Launch-gate results here are **evidence-quality outputs**, not standalone proof of runtime control enforcement.
+>
+> The launch-gate machine output explicitly separates:
+> - `evidence_status.present`
+> - `evidence_status.incomplete`
+> - `control_assessment.enforced`
+> - `control_assessment.proven`
+>
+> `control_assessment.proven` remains `false` in this workspace unless runtime enforcement is independently validated.
 
 ## End-to-end demo scenario
+
+Run the reproducible demo from repo root:
+
+```bash
+make demo
+```
+
+Or directly:
 
 ```bash
 cd integration-adapter
 python -m integration_adapter.demo_scenario
 ```
 
-This generates demo artifacts, runs launch-gate, and verifies Starter Kit artifact readers can parse outputs.
+**Partially Implemented:** This demo executes the full story (runtime request -> retrieval -> tool decision -> MCP usage representation -> eval evidence -> artifacts -> launch-gate -> dashboard read verification), preferring real extraction and using synthetic schema-valid fallbacks only where required.
 
-See `docs/demo-scenario.md` for full steps and real-vs-synthetic labels.
+After running, inspect:
+- `integration-adapter/artifacts/logs/demo_scenario.report.json`
+- `integration-adapter/artifacts/logs/launch_gate/security-readiness-<STAMP>.json`
+
+**Implemented:** See `docs/demo-scenario.md` for exact steps, output expectations, and remaining realism gaps.
 
 ## Testing blind spots
 

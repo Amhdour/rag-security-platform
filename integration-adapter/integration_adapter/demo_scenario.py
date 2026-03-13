@@ -41,7 +41,12 @@ def _synthetic_runtime_events() -> list[dict[str, Any]]:
             "event_type": "retrieval.decision",
             "actor_id": "retrieval",
             "tenant_id": "tenant-demo",
-            "event_payload": {"source_id": "con-1", "query": "how to reset password", "allowed": True, "synthetic": True},
+            "event_payload": {
+                "source_id": "con-1",
+                "query": "how to reset password",
+                "allowed": True,
+                "synthetic": True,
+            },
         },
         {
             "request_id": "demo-req-1",
@@ -57,7 +62,12 @@ def _synthetic_runtime_events() -> list[dict[str, Any]]:
             "event_type": "tool.execution_attempt",
             "actor_id": "mcp-runtime",
             "tenant_id": "tenant-demo",
-            "event_payload": {"mcp_server": "ops-mcp", "tool_name": "runbook.lookup", "decision": "allow", "synthetic": True},
+            "event_payload": {
+                "mcp_server": "ops-mcp",
+                "tool_name": "runbook.lookup",
+                "decision": "allow",
+                "synthetic": True,
+            },
         },
         {
             "request_id": "demo-req-1",
@@ -80,28 +90,77 @@ def _synthetic_runtime_events() -> list[dict[str, Any]]:
 
 def _default_connectors() -> list[dict[str, Any]]:
     return [
-        {"id": "con-1", "name": "confluence", "status": "active", "source_type": "wiki", "indexed": True, "synthetic": True},
-        {"id": "con-2", "name": "github", "status": "active", "source_type": "code", "indexed": True, "synthetic": True},
+        {
+            "id": "con-1",
+            "name": "confluence",
+            "status": "active",
+            "source_type": "wiki",
+            "indexed": True,
+            "synthetic": True,
+        },
+        {
+            "id": "con-2",
+            "name": "github",
+            "status": "active",
+            "source_type": "code",
+            "indexed": True,
+            "synthetic": True,
+        },
     ]
 
 
 def _default_tools() -> list[dict[str, Any]]:
     return [
-        {"id": "tool-1", "name": "search", "status": "enabled", "risk_tier": "low", "enabled": True, "synthetic": True},
-        {"id": "tool-2", "name": "ticket_lookup", "status": "enabled", "risk_tier": "medium", "enabled": True, "synthetic": True},
+        {
+            "id": "tool-1",
+            "name": "search",
+            "status": "enabled",
+            "risk_tier": "low",
+            "enabled": True,
+            "synthetic": True,
+        },
+        {
+            "id": "tool-2",
+            "name": "ticket_lookup",
+            "status": "enabled",
+            "risk_tier": "medium",
+            "enabled": True,
+            "synthetic": True,
+        },
     ]
 
 
 def _default_mcp() -> list[dict[str, Any]]:
     return [
-        {"id": "mcp-1", "name": "ops-mcp", "status": "connected", "endpoint": "https://mcp.local", "usage_count": 1, "synthetic": True}
+        {
+            "id": "mcp-1",
+            "name": "ops-mcp",
+            "status": "connected",
+            "endpoint": "https://mcp.local",
+            "usage_count": 1,
+            "synthetic": True,
+        }
     ]
 
 
 def _default_evals() -> list[dict[str, Any]]:
     return [
-        {"id": "eval-1", "suite": "security_baseline", "passed": True, "score": 0.97, "scenario": "prompt_injection_direct", "synthetic": True},
-        {"id": "eval-2", "suite": "security_baseline", "passed": True, "score": 0.93, "scenario": "tool_misuse_attempt", "synthetic": True},
+        {
+            "id": "eval-1",
+            "suite": "security_baseline",
+            "passed": True,
+            "score": 0.97,
+            "scenario": "prompt_injection_direct",
+            "synthetic": True,
+        },
+        {
+            "id": "eval-2",
+            "suite": "security_baseline",
+            "passed": True,
+            "score": 0.93,
+            "scenario": "tool_misuse_attempt",
+            "synthetic": True,
+        },
     ]
 
 
@@ -142,6 +201,53 @@ def _verify_dashboard_can_read(repo_root: Path, artifacts_root: Path) -> dict[st
                 pass
 
 
+def _verify_demo_outputs(outputs: dict[str, str], artifacts_root: Path) -> list[str]:
+    missing: list[str] = []
+    for _, path_text in outputs.items():
+        if not Path(path_text).exists():
+            missing.append(path_text)
+
+    # Ensure at least one launch gate JSON/MD exists.
+    if not list((artifacts_root / "launch_gate").glob("*.json")):
+        missing.append(str(artifacts_root / "launch_gate/*.json"))
+    if not list((artifacts_root / "launch_gate").glob("*.md")):
+        missing.append(str(artifacts_root / "launch_gate/*.md"))
+
+    return missing
+
+
+def _build_story_steps(real_vs_synthetic: dict[str, str]) -> list[dict[str, str]]:
+    runtime_source = real_vs_synthetic["runtime_events"]
+    connectors_source = real_vs_synthetic["connectors"]
+    tools_source = real_vs_synthetic["tools"]
+    mcp_source = real_vs_synthetic["mcp_inventory"]
+    eval_source = real_vs_synthetic["eval_results"]
+
+    return [
+        {"step": "request enters runtime context", "source": runtime_source},
+        {"step": "retrieval touches sources", "source": runtime_source if runtime_source == "real" else connectors_source},
+        {"step": "tool decision is evaluated", "source": runtime_source if runtime_source == "real" else tools_source},
+        {"step": "MCP usage is represented", "source": mcp_source if mcp_source == "real" else runtime_source},
+        {"step": "eval evidence is generated", "source": eval_source},
+        {"step": "artifacts are written", "source": "implemented"},
+        {"step": "launch gate produces a result", "source": "implemented"},
+        {"step": "dashboard can read artifacts", "source": "implemented"},
+    ]
+
+
+def _remaining_realism_gaps(real_vs_synthetic: dict[str, str]) -> list[str]:
+    gaps: list[str] = []
+    if real_vs_synthetic["runtime_events"] != "real":
+        gaps.append("UNCONFIRMED: canonical runtime event feed hook is not validated in this workspace.")
+    if real_vs_synthetic["eval_results"] != "real":
+        gaps.append("UNCONFIRMED: canonical Onyx eval result runtime hook remains file/snapshot-backed.")
+    if real_vs_synthetic["mcp_inventory"] != "real":
+        gaps.append("UNCONFIRMED: production MCP usage semantics are represented by demo-compatible fallback data.")
+    if not gaps:
+        gaps.append("No synthetic fallbacks used in this run; deployment-wide runtime hook parity is still UNCONFIRMED.")
+    return gaps
+
+
 def run_demo_scenario(config: AdapterConfig | None = None) -> dict[str, Any]:
     cfg = config or AdapterConfig.from_env(default_root="artifacts/logs")
     writer = ArtifactWriter(cfg)
@@ -156,8 +262,6 @@ def run_demo_scenario(config: AdapterConfig | None = None) -> dict[str, Any]:
     tools = tools_real or _default_tools()
     mcp_servers = mcp_real or _default_mcp()
     evals = evals_real or _default_evals()
-
-    # Keep runtime event story deterministic for demo narrative.
     runtime_events = runtime_real or _synthetic_runtime_events()
 
     writer.write_inventory_snapshot(domain="connectors", rows=map_connector_inventory(connectors))
@@ -195,28 +299,37 @@ def run_demo_scenario(config: AdapterConfig | None = None) -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[2]
     dashboard_verification = _verify_dashboard_can_read(repo_root, cfg.artifacts_root)
 
+    real_vs_synthetic = {
+        "connectors": "real" if connectors_real else "synthetic",
+        "tools": "real" if tools_real else "synthetic",
+        "mcp_inventory": "real" if mcp_real else "synthetic",
+        "runtime_events": "real" if runtime_real else "synthetic",
+        "eval_results": "real" if evals_real else "synthetic",
+    }
+
+    outputs = {
+        "audit_jsonl": str(audit_path),
+        "replay_json": str(replay_path),
+        "eval_jsonl": str(eval_jsonl_path),
+        "eval_summary": str(eval_summary_path),
+        "launch_gate_json": str(launch_json_path),
+        "launch_gate_markdown": str(launch_md_path),
+    }
+
     report = {
         "scenario": "demo_e2e_runtime_to_governance",
-        "synthetic_data": True,
-        "real_vs_synthetic": {
-            "connectors": "real" if connectors_real else "synthetic",
-            "tools": "real" if tools_real else "synthetic",
-            "mcp_inventory": "real" if mcp_real else "synthetic",
-            "runtime_events": "real" if runtime_real else "synthetic",
-            "eval_results": "real" if evals_real else "synthetic",
-        },
+        "synthetic_data": any(value == "synthetic" for value in real_vs_synthetic.values()),
+        "real_vs_synthetic": real_vs_synthetic,
+        "story_steps": _build_story_steps(real_vs_synthetic),
         "artifacts_root": str(cfg.artifacts_root),
-        "outputs": {
-            "audit_jsonl": str(audit_path),
-            "replay_json": str(replay_path),
-            "eval_jsonl": str(eval_jsonl_path),
-            "eval_summary": str(eval_summary_path),
-            "launch_gate_json": str(launch_json_path),
-            "launch_gate_markdown": str(launch_md_path),
-        },
+        "outputs": outputs,
         "launch_gate_status": evaluation.status,
         "dashboard_read_verification": dashboard_verification,
+        "remaining_realism_gaps": _remaining_realism_gaps(real_vs_synthetic),
     }
+
+    missing_outputs = _verify_demo_outputs(outputs, cfg.artifacts_root)
+    report["missing_outputs"] = missing_outputs
 
     report_path = cfg.artifacts_root / "demo_scenario.report.json"
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
@@ -243,6 +356,9 @@ def main() -> int:
     print("[integration-adapter] demo scenario completed")
     print(json.dumps(report, indent=2, sort_keys=True))
 
+    if report.get("missing_outputs"):
+        print("[integration-adapter] required demo outputs missing", file=sys.stderr)
+        return 3
     if not report.get("dashboard_read_verification", {}).get("verified", False):
         print("[integration-adapter] dashboard read verification failed", file=sys.stderr)
         return 2

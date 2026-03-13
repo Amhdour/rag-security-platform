@@ -82,7 +82,7 @@ Overlapping concern domains:
 2. Zone B — Adapter (read/transform/export)
 3. Zone C — Governance (Starter Kit read-only consumption)
 
-Expected flow: **A -> B -> C**.
+**Implemented (design intent):** Expected flow is **A -> B -> C**.
 
 ## Integration TODOs / unconfirmed hooks
 
