@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 
 class SourceReadError(RuntimeError):
@@ -65,3 +67,45 @@ def env_path(name: str) -> Path | None:
     if not value:
         return None
     return Path(value)
+
+
+def _load_url_text(url: str, *, timeout_seconds: float = 5.0) -> str:
+    req = Request(url, headers={"Accept": "application/json, application/x-ndjson"})
+    try:
+        with urlopen(req, timeout=timeout_seconds) as response:  # noqa: S310
+            raw = response.read()
+    except URLError as exc:
+        raise SourceReadError(f"failed to read URL {url}: {exc}") from exc
+    return raw.decode("utf-8")
+
+
+def load_json_records_from_url(url: str, *, timeout_seconds: float = 5.0) -> list[dict[str, Any]]:
+    try:
+        payload = json.loads(_load_url_text(url, timeout_seconds=timeout_seconds))
+    except json.JSONDecodeError as exc:
+        raise SourceReadError(f"invalid JSON from URL {url}: {exc}") from exc
+
+    if isinstance(payload, list):
+        return [row for row in payload if isinstance(row, dict)]
+    if isinstance(payload, dict):
+        rows = payload.get("rows")
+        if isinstance(rows, list):
+            return [row for row in rows if isinstance(row, dict)]
+        return [payload]
+    raise SourceReadError(f"unsupported JSON payload type from URL {url}: {type(payload)}")
+
+
+def load_jsonl_records_from_url(url: str, *, timeout_seconds: float = 5.0) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    text = _load_url_text(url, timeout_seconds=timeout_seconds)
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            decoded = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(decoded, dict):
+            rows.append(decoded)
+    return rows

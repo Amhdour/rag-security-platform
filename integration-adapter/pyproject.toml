@@ -22,6 +22,8 @@ integration-adapter-evidence = "integration_adapter.evidence_pipeline:main"
 integration-adapter-validate = "integration_adapter.validate_config:main"
 integration-adapter-ci-smoke = "integration_adapter.ci_smoke:main"
 integration-adapter-verify-integrity = "integration_adapter.verify_artifact_integrity:main"
+integration-adapter-retention = "integration_adapter.artifact_retention:main"
+integration-adapter-health = "integration_adapter.health_report:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

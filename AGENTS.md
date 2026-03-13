@@ -37,6 +37,23 @@ Use explicit wording where relevant:
 4. Add schema validation + malformed/missing input handling.
 5. Add deterministic tests before broad doc claims.
 
+## CI + review guardrails (Codex/GitHub)
+- Before updating claim-bearing docs, run at minimum:
+  - `python scripts/validate_upstream_provenance_lock.py`
+  - `cd integration-adapter && python -m pytest -q`
+- For release-quality verification (same path as CI), run:
+  - `make adapter-ci`
+  - `cd integration-adapter && python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs-ci-smoke`
+- In code review, verify these are true in changed outputs/artifacts:
+  1. source-mode + fallback metadata remains explicit,
+  2. schema/version compatibility checks still fail-closed on blocked mismatches,
+  3. launch-gate still fails on integrity failures and critical evidence failures,
+  4. integrity verification failures are treated as blockers (not warnings).
+- If CI fails, first reproduce locally with:
+  - `make adapter-ci`
+  - then the failing step command from `.github/workflows/ci.yml`.
+- Do not merge with unresolved regressions in integrity, schema compatibility, or launch-gate critical checks.
+
 ## Test-before-claim rule
 - Run relevant tests **before** updating docs/claims.
 - Minimum for adapter changes:

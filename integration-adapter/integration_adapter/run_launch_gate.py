@@ -20,7 +20,14 @@ def main() -> int:
         base = AdapterConfig.from_env(default_root="artifacts/logs")
         root = Path(args.artifacts_root) if args.artifacts_root else base.artifacts_root
         profile = args.profile or os.environ.get("INTEGRATION_ADAPTER_PROFILE", base.profile)
-        config = AdapterConfig(artifacts_root=root, profile=profile)
+        config = AdapterConfig(
+            artifacts_root=root,
+            profile=profile,
+            integrity_mode=base.integrity_mode,
+            integrity_signing_key=base.integrity_signing_key,
+            integrity_signing_key_path=base.integrity_signing_key_path,
+            integrity_signing_key_id=base.integrity_signing_key_id,
+        )
     else:
         config = None
 

@@ -224,6 +224,8 @@ def _build_health_summary(
     launch_gate_status: str | None,
     launch_gate_blockers: list[str],
     stale_evidence_detections: int,
+    integrity_verification: dict[str, Any] | None = None,
+    retention_outcome: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     source_mode_counts: dict[str, int] = defaultdict(int)
     fallback_usage_count = 0
@@ -246,16 +248,23 @@ def _build_health_summary(
 
     if has_blocked or artifact_write_failures > 0:
         run_status = "failed_run"
+        failure_category = "artifact_or_schema_failure"
     elif has_degradation or (launch_gate_status is not None and launch_gate_status != "go"):
         run_status = "degraded_success"
+        failure_category = "degraded_evidence_or_gate"
     else:
         run_status = "success"
+        failure_category = "none"
+
+    integrity_payload = integrity_verification or {"status": "not_run"}
+    retention_payload = retention_outcome or {"status": "not_run"}
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "mode": payload.mode,
         "profile": profile,
         "run_status": run_status,
+        "failure_category": failure_category,
         "metrics": {
             "selected_source_mode": {key: value.get("source_mode", "synthetic") for key, value in payload.exporter_diagnostics.items()},
             "source_mode_counts": dict(source_mode_counts),
@@ -267,6 +276,9 @@ def _build_health_summary(
             "launch_gate_failure_reasons_count": len(launch_gate_blockers),
             "stale_evidence_detections": stale_evidence_detections,
             "partial_extraction_warnings": partial_extraction_warnings,
+            "integrity_ok": bool(integrity_payload.get("ok", False)) if isinstance(integrity_payload, dict) else False,
+            "integrity_signature_verified": bool(integrity_payload.get("signature_verified", False)) if isinstance(integrity_payload, dict) else False,
+            "retention_deleted_count": int((retention_payload.get("deleted_count", 0) if isinstance(retention_payload, dict) else 0) or 0),
         },
         "compatibility": [
             {
@@ -283,6 +295,8 @@ def _build_health_summary(
             "status": launch_gate_status or "not_run",
             "blockers": launch_gate_blockers,
         },
+        "integrity": integrity_payload,
+        "retention": retention_payload,
     }
 
 
@@ -391,17 +405,6 @@ def generate_artifacts(*, force_demo: bool = False, config: AdapterConfig | None
     for check in evaluation.checks:
         if check.check_name == "evidence_freshness":
             stale_detections = int((check.evidence or {}).get("stale_count", 0))
-
-    final_summary = _build_health_summary(
-        profile=profile,
-        payload=payload,
-        compatibility_decisions=compatibility_decisions,
-        artifact_write_failures=artifact_write_failures,
-        launch_gate_status=evaluation.status,
-        launch_gate_blockers=evaluation.blockers,
-        stale_evidence_detections=stale_detections,
-    )
-    adapter_health_path = writer.write_adapter_health_summary(final_summary)
 
     integrity_files: list[Path] = [
         artifact_contract_path,

@@ -1,4 +1,4 @@
-.PHONY: evidence evidence-demo evidence-step evidence-step-demo demo provenance-check adapter-validate adapter-smoke adapter-ci adapter-integrity
+.PHONY: evidence evidence-demo evidence-step evidence-step-demo demo provenance-check adapter-validate adapter-smoke adapter-ci adapter-integrity adapter-retention adapter-retention-apply adapter-health
 
 evidence:
 	cd integration-adapter && python -m integration_adapter.evidence_pipeline
@@ -37,3 +37,12 @@ adapter-ci:
 
 adapter-integrity:
 	cd integration-adapter && python -m integration_adapter.verify_artifact_integrity
+
+adapter-retention:
+	cd integration-adapter && python -m integration_adapter.artifact_retention --dry-run
+
+adapter-retention-apply:
+	cd integration-adapter && python -m integration_adapter.artifact_retention --apply
+
+adapter-health:
+	cd integration-adapter && python -m integration_adapter.health_report --format text

@@ -24,7 +24,15 @@ def main() -> int:
     args = parser.parse_args()
 
     profile = args.profile or os.environ.get("INTEGRATION_ADAPTER_PROFILE", "ci")
-    config = AdapterConfig(artifacts_root=Path(args.artifacts_root), profile=profile)
+    base = AdapterConfig.from_env(default_root="artifacts/logs-ci-smoke")
+    config = AdapterConfig(
+        artifacts_root=Path(args.artifacts_root),
+        profile=profile,
+        integrity_mode=base.integrity_mode,
+        integrity_signing_key=base.integrity_signing_key,
+        integrity_signing_key_path=base.integrity_signing_key_path,
+        integrity_signing_key_id=base.integrity_signing_key_id,
+    )
     validation = validate_configuration(config=config, strict_sources=False)
     if validation.status == "fail":
         print(json.dumps(validation.to_dict(), indent=2, sort_keys=True), file=sys.stderr)

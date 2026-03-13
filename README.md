@@ -32,7 +32,8 @@ Integration workspace for a **three-plane architecture**:
 - Read-only Starter Kit dashboard artifact parsing compatibility for generated artifacts.
 
 ### Partially Implemented
-- Exporters can read file-backed inputs and may attempt direct Onyx DB extraction when runtime environment supports it.
+- Exporters can read file-backed inputs and may attempt optional live/service-api/db-backed extraction when runtime environment supports it.
+- Exporter source precedence target is `live` > `service_api` > `db_backed` > `file_backed` > `fixture_backed` > `synthetic`.
 
 ### Demo-only
 - End-to-end demo scenario can use synthetic-but-schema-valid events/inventory/evals when live hooks are unavailable.
@@ -66,6 +67,7 @@ Integration workspace for a **three-plane architecture**:
 - `docs/identity-authz-evidence.md`
 - `docs/negative-path-validation.md`
 - `docs/artifact-integrity.md`
+- `docs/artifact-retention-policy.md`
 
 **Implemented:** Validate machine-readable provenance lock shape with `make provenance-check` (or `python scripts/validate_upstream_provenance_lock.py`).
 
@@ -103,6 +105,7 @@ python -m pip install -e .[dev]
 - `integration-adapter-evidence`
 - `integration-adapter-validate`
 - `integration-adapter-ci-smoke`
+- `integration-adapter-health`
 
 **Implemented:** Configuration validation command (copy/paste):
 
@@ -147,11 +150,48 @@ cd integration-adapter
 python -m integration_adapter.run_launch_gate --profile demo --artifacts-root artifacts/logs
 ```
 
-Verify artifact integrity manifest + hashes:
+Verify artifact integrity manifest + hashes (default `hash_only` mode):
 
 ```bash
 cd integration-adapter
 python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs
+```
+
+Optional signed-manifest verification:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs --integrity-mode signed_manifest --signing-key-path /secure/path/signing.key
+```
+
+
+Apply artifact retention policy (dry-run by default):
+
+```bash
+cd integration-adapter
+python -m integration_adapter.artifact_retention --dry-run --profile ci --artifacts-root artifacts/logs
+```
+
+Apply destructive cleanup after validation/integrity checks:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.artifact_retention --apply --profile ci --artifacts-root artifacts/logs
+```
+
+
+Operator health summary (text):
+
+```bash
+cd integration-adapter
+python -m integration_adapter.health_report --artifacts-root artifacts/logs --format text
+```
+
+Metrics-style summary:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.health_report --artifacts-root artifacts/logs --format metrics
 ```
 
 Expected outputs:
@@ -169,6 +209,8 @@ Failure conditions (non-zero exit):
 - **Implemented:** profile safeguards blocked (for example `prod_like` + synthetic/demo fallback).
 - **Implemented:** launch-gate critical FAIL checks (missing/stale critical evidence, integrity failures).
 - **Implemented:** integrity verifier detects missing files/manifest entries/hash mismatches.
+- **Implemented:** integrity verifier fails when signed-manifest verification is requested and signature validation fails.
+- **Implemented:** retention cleanup must run in explicit apply mode and preserves required artifacts plus latest successful launch-gate runs.
 
 ## Tests
 
@@ -189,6 +231,26 @@ pytest -q
 ### Onyx
 
 **Implemented:** Onyx has broader env/service requirements; see `onyx-main/AGENTS.md` and `onyx-main/README.md`.
+
+## Workspace CI automation
+
+**Implemented:** GitHub Actions workflow `.github/workflows/ci.yml` runs on both `push` and `pull_request` events for this workspace.
+
+**Implemented:** CI executes the following checks in order:
+1. Python 3.11 setup and adapter dependency installation (`pip install -e ./integration-adapter[dev]`).
+2. Upstream provenance lock validation (`python scripts/validate_upstream_provenance_lock.py`).
+3. Integration adapter test suite (`cd integration-adapter && python -m pytest -q`).
+4. CI smoke pipeline (`cd integration-adapter && python -m integration_adapter.ci_smoke --profile ci --artifacts-root artifacts/logs-ci-smoke`).
+5. Artifact regeneration for a fresh manifest snapshot (`cd integration-adapter && python -m integration_adapter.generate_artifacts --demo --profile ci --artifacts-root artifacts/logs-ci-smoke`).
+6. Artifact integrity verification against smoke outputs (`cd integration-adapter && python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs-ci-smoke`).
+
+**Implemented:** CI blockers (hard-fail conditions) include:
+- failing adapter tests,
+- invalid upstream provenance lock shape,
+- smoke pipeline execution failures or missing required outputs,
+- integrity manifest failures (missing entries or hash mismatch).
+
+**Demo-only:** Smoke outputs are generated from deterministic demo-safe pathways and local fixtures by design; they validate pipeline contracts, not production runtime enforcement.
 
 ## Evidence generation pipeline
 

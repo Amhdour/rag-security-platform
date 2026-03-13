@@ -35,11 +35,13 @@
 
 ## Exporter runtime-hook status
 
-- **Connector inventory exporter**: **Partially Implemented** (real Onyx DB read via `onyx.db.connector.fetch_connectors` when runtime is available; file-backed fallback).
-- **Tool inventory exporter**: **Partially Implemented** (real Onyx DB read via `onyx.db.tools.get_tools` when runtime is available; file-backed fallback).
-- **MCP inventory exporter**: **Partially Implemented** (real Onyx DB read via `onyx.db.mcp.get_all_mcp_servers` with ToolCall-derived usage counts when runtime is available; file-backed fallback).
-- **Eval results exporter**: **Partially Implemented** (file-backed snapshot extraction plus runtime config-backed scheduled eval inventory via `onyx.configs.app_configs` when runtime imports are available).
-- **Runtime events exporter**: **Partially Implemented** (prefers audit JSONL, with ChatSession-derived `request.start`/`request.end` and ToolCall-derived `tool.execution_attempt` fallback events from Onyx DB when runtime is available).
+- **Implemented:** Exporter source precedence target is `live` > `service_api` > `db_backed` > `file_backed` > `fixture_backed` > `synthetic`.
+
+- **Connector inventory exporter**: **Partially Implemented** (optional Onyx live/db read via `onyx.db.connector.fetch_connectors`; optional service API source via `INTEGRATION_ADAPTER_ONYX_CONNECTORS_SERVICE_API`; file-backed fallback).
+- **Tool inventory exporter**: **Partially Implemented** (optional Onyx live/db read via `onyx.db.tools.get_tools`; optional service API source via `INTEGRATION_ADAPTER_ONYX_TOOLS_SERVICE_API`; file-backed fallback).
+- **MCP inventory exporter**: **Partially Implemented** (optional Onyx live/db read via `onyx.db.mcp.get_all_mcp_servers` with ToolCall-derived usage counts; optional service API source via `INTEGRATION_ADAPTER_ONYX_MCP_SERVICE_API`; file-backed fallback).
+- **Eval results exporter**: **Partially Implemented** (runtime config-backed scheduled eval inventory via `onyx.configs.app_configs`, optional service API source via `INTEGRATION_ADAPTER_ONYX_EVALS_SERVICE_API`, and file-backed snapshot extraction).
+- **Runtime events exporter**: **Partially Implemented** (prefers live runtime log-backed JSONL via `INTEGRATION_ADAPTER_ONYX_RUNTIME_LOG_JSONL`, then optional service API JSONL via `INTEGRATION_ADAPTER_ONYX_RUNTIME_EVENTS_SERVICE_API`, then ChatSession/ToolCall DB-derived fallback events, then file-backed JSONL).
 
 > Unconfirmed: canonical runtime hook not validated in this workspace for deployment-wide parity.
 
@@ -86,6 +88,8 @@ Proven vs inferred guidance:
 - `integration_adapter/generate_artifacts.py` — CLI entrypoint.
 - `integration_adapter/run_launch_gate.py` — CLI entrypoint.
 - `integration_adapter/demo_scenario.py` — end-to-end demo runner.
+- `integration_adapter/artifact_retention.py` — profile-aware artifact retention planning and cleanup CLI.
+- `integration_adapter/health_report.py` — operator-focused health summary CLI (json/text/metrics formats).
 
 ## Mapping contract
 
@@ -116,15 +120,32 @@ Proven vs inferred guidance:
 - **Implemented:** Adapter emits `artifacts/logs/adapter_health/adapter_run_summary.json` for run-level observability.
 - **Implemented:** Health metrics include source modes, fallback count, parse failures, schema validation failures, artifact write failures, launch-gate failure reasons, stale evidence detections, and partial extraction warnings.
 - **Implemented:** Health run status is explicit: `success`, `degraded_success`, or `failed_run`.
+- **Implemented:** Operator summary CLI is available via `python -m integration_adapter.health_report --artifacts-root artifacts/logs --format text`.
 - **Implemented:** See `../docs/adapter-health.md` for details.
 
 ## Artifact integrity safeguards
 
 - **Implemented:** Adapter writes `artifact_integrity.manifest.json` with per-file SHA-256 and size metadata.
-- **Implemented:** Launch-gate fail-closes on missing/invalid integrity manifests or hash mismatches.
-- **Implemented:** Verify with `python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs`.
+- **Implemented:** Integrity modes: `hash_only` (default) and optional `signed_manifest` (HMAC-SHA256).
+- **Implemented:** Launch-gate fail-closes on missing/invalid integrity manifests, hash mismatches, and signed-manifest verification failures.
+- **Implemented:** Verify hash-only mode with `python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs`.
+- **Implemented:** Verify signed mode with `python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs --integrity-mode signed_manifest --signing-key-path /secure/path/signing.key`.
 - **Unconfirmed:** no cryptographic non-repudiation/signature chain is implemented in this workspace.
 - **Implemented:** See `../docs/artifact-integrity.md`.
+
+
+## Artifact retention lifecycle policy
+
+**Implemented:** Artifact lifecycle management is profile-aware and operator-invoked via `integration_adapter.artifact_retention`.
+
+Safety behavior:
+- **Implemented:** default mode is dry-run (no deletion).
+- **Implemented:** destructive deletion requires `--apply`.
+- **Implemented:** required baseline artifacts are preserved.
+- **Implemented:** files referenced by `artifact_integrity.manifest.json` are preserved.
+- **Implemented:** latest successful launch-gate run(s) are preserved with `--keep-latest-successful-runs` (default `1`).
+
+See `../docs/artifact-retention-policy.md` for family windows, profile defaults, and environment overrides.
 
 ## Negative-path security validation
 
@@ -193,6 +214,9 @@ python -m integration_adapter.validate_config --strict-sources
 | Validate config/profile | `python -m integration_adapter.validate_config --profile dev` | JSON `"status": "pass"` | non-zero exit + `config validation failed` |
 | Generate artifacts | `python -m integration_adapter.generate_artifacts --demo --profile demo --artifacts-root artifacts/logs` | prints contract/audit/launch-gate/integrity paths | non-zero exit + `artifact generation failed` |
 | Verify integrity | `python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs` | JSON `"ok": true` | non-zero exit + missing/hash mismatch details |
+| Retention dry-run | `python -m integration_adapter.artifact_retention --dry-run --profile ci --artifacts-root artifacts/logs` | JSON candidate list, `deleted_count: 0` | non-zero exit for invalid profile/args |
+| Retention apply | `python -m integration_adapter.artifact_retention --apply --profile ci --artifacts-root artifacts/logs` | JSON `deleted_count >= 0` + explicit completion message | non-zero exit for invalid profile/args |
+| Health summary | `python -m integration_adapter.health_report --artifacts-root artifacts/logs --format text` | concise run status + counters + integrity/gate/retention summary | non-zero exit for invalid args |
 | Evaluate gate | `python -m integration_adapter.run_launch_gate --profile demo --artifacts-root artifacts/logs` | launch-gate JSON path printed | non-zero exit + `launch gate failed` |
 
 Profile behavior summary:
@@ -222,6 +246,31 @@ Real vs synthetic vs derived:
 cd integration-adapter
 python -m pytest -q
 ```
+
+## CI automation and local parity
+
+**Implemented:** Workspace CI is defined at `../.github/workflows/ci.yml` and runs on `push` and `pull_request`.
+
+**Implemented:** CI checks for adapter verification are:
+1. `python scripts/validate_upstream_provenance_lock.py`
+2. `cd integration-adapter && pytest -q`
+3. `cd integration-adapter && python -m integration_adapter.ci_smoke --profile ci --artifacts-root artifacts/logs-ci-smoke`
+4. `cd integration-adapter && python -m integration_adapter.generate_artifacts --demo --profile ci --artifacts-root artifacts/logs-ci-smoke`
+5. `cd integration-adapter && python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs-ci-smoke`
+
+Run the same checks locally from repo root:
+
+```bash
+python scripts/validate_upstream_provenance_lock.py
+cd integration-adapter && pytest -q
+cd integration-adapter && python -m integration_adapter.ci_smoke --profile ci --artifacts-root artifacts/logs-ci-smoke
+cd integration-adapter && python -m integration_adapter.generate_artifacts --demo --profile ci --artifacts-root artifacts/logs-ci-smoke
+cd integration-adapter && python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs-ci-smoke
+```
+
+**Implemented:** CI blockers are any non-zero exits from the checks above, including contract/provenance failures, smoke output verification failures, and artifact integrity/hash mismatches.
+
+**Demo-only:** `integration_adapter.ci_smoke` intentionally relies on deterministic demo-compatible flows and local fixtures rather than requiring live runtime services.
 
 ## Runnable evidence pipeline
 

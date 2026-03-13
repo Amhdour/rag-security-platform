@@ -71,7 +71,15 @@ def main() -> int:
         )
 
         profile = args.profile or os.environ.get("INTEGRATION_ADAPTER_PROFILE", "dev")
-        pipeline_config = AdapterConfig(artifacts_root=AdapterConfig.from_env().artifacts_root, profile=profile)
+        base = AdapterConfig.from_env()
+        pipeline_config = AdapterConfig(
+            artifacts_root=base.artifacts_root,
+            profile=profile,
+            integrity_mode=base.integrity_mode,
+            integrity_signing_key=base.integrity_signing_key,
+            integrity_signing_key_path=base.integrity_signing_key_path,
+            integrity_signing_key_id=base.integrity_signing_key_id,
+        )
         artifacts = generate_artifacts(force_demo=args.demo, config=pipeline_config)
         print("[integration-adapter] generate_artifacts complete")
         print(f"[integration-adapter] profile={artifacts.profile}")

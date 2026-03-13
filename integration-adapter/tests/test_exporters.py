@@ -12,6 +12,8 @@ from integration_adapter.exporters import (
     SOURCE_MODE_DB_BACKED,
     SOURCE_MODE_FILE_BACKED,
     SOURCE_MODE_FIXTURE_BACKED,
+    SOURCE_MODE_LIVE,
+    SOURCE_MODE_SERVICE_API,
     ToolInventoryExporter,
 )
 
@@ -38,7 +40,7 @@ def test_connector_inventory_exporter_reads_json_snapshot(tmp_path, monkeypatch)
 
     assert rows[0]["id"] == "con-1"
     assert rows[0]["source_mode"] == SOURCE_MODE_FILE_BACKED
-    assert rows[0]["fallback_used"] is False
+    assert rows[0]["fallback_used"] is True
 
 
 def test_tool_inventory_exporter_defaults_missing_fields(tmp_path, monkeypatch) -> None:
@@ -358,3 +360,75 @@ def test_tool_risk_tier_heuristics() -> None:
     assert exporter._derive_risk_tier(SimpleNamespace(passthrough_auth=False, mcp_server_id=9, openapi_schema=None, in_code_tool_id=None)) == "high"
     assert exporter._derive_risk_tier(SimpleNamespace(passthrough_auth=False, mcp_server_id=None, openapi_schema={"type": "object"}, in_code_tool_id=None)) == "medium"
     assert exporter._derive_risk_tier(SimpleNamespace(passthrough_auth=False, mcp_server_id=None, openapi_schema=None, in_code_tool_id="search")) == "low"
+
+
+def test_connector_exporter_prefers_service_api_over_db_and_file(monkeypatch) -> None:
+    exporter = ConnectorInventoryExporter()
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: ([{"id": "f1", "name": "file", "status": "active", "source_type": "wiki", "indexed": True}], [], []))
+    monkeypatch.setattr(exporter, "_read_from_onyx_db", lambda: ([{"id": "d1", "name": "db", "status": "active", "source_type": "wiki", "indexed": True}], [], []))
+    monkeypatch.setattr(exporter, "_read_from_service_api", lambda: ([{"id": "s1", "name": "svc", "status": "active", "source_type": "wiki", "indexed": True}], [], [], "https://onyx/connectors"))
+
+    rows = exporter.export()
+
+    assert rows[0]["id"] == "s1"
+    assert rows[0]["source_mode"] == SOURCE_MODE_SERVICE_API
+    assert rows[0]["fallback_used"] is True
+
+
+def test_connector_exporter_prefers_live_when_flag_enabled(monkeypatch) -> None:
+    exporter = ConnectorInventoryExporter()
+    monkeypatch.setenv("INTEGRATION_ADAPTER_DB_SOURCE_MODE_LIVE", "true")
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: ([{"id": "f1", "name": "file", "status": "active", "source_type": "wiki", "indexed": True}], [], []))
+    monkeypatch.setattr(exporter, "_read_from_onyx_db", lambda: ([{"id": "l1", "name": "live-db", "status": "active", "source_type": "wiki", "indexed": True}], [], []))
+    monkeypatch.setattr(exporter, "_read_from_service_api", lambda: ([{"id": "s1", "name": "svc", "status": "active", "source_type": "wiki", "indexed": True}], [], [], "https://onyx/connectors"))
+
+    rows = exporter.export()
+
+    assert rows[0]["id"] == "l1"
+    assert rows[0]["source_mode"] == SOURCE_MODE_LIVE
+    assert rows[0]["fallback_used"] is False
+
+
+def test_runtime_events_exporter_prefers_live_log_source(tmp_path, monkeypatch) -> None:
+    live = tmp_path / "live-audit.jsonl"
+    live.write_text(json.dumps({"request_id": "r1", "trace_id": "t1", "event_type": "request.start", "actor_id": "u1", "tenant_id": "t", "event_payload": {}}), encoding="utf-8")
+    file_snapshot = tmp_path / "file-audit.jsonl"
+    file_snapshot.write_text(json.dumps({"request_id": "r2", "trace_id": "t2", "event_type": "request.start", "actor_id": "u2", "tenant_id": "t", "event_payload": {}}), encoding="utf-8")
+
+    exporter = RuntimeEventsExporter()
+    monkeypatch.setenv("INTEGRATION_ADAPTER_ONYX_RUNTIME_LOG_JSONL", str(live))
+    monkeypatch.setenv("INTEGRATION_ADAPTER_ONYX_RUNTIME_EVENTS_JSONL", str(file_snapshot))
+    monkeypatch.setattr(exporter, "_read_from_onyx_db", lambda: ([], [], []))
+    monkeypatch.setattr(exporter, "_read_from_service_api", lambda: ([], [], [], ""))
+
+    rows = exporter.export()
+
+    assert rows
+    assert rows[0]["event_payload"]["source_mode"] == SOURCE_MODE_LIVE
+
+
+def test_eval_exporter_handles_malformed_service_data_and_falls_back(monkeypatch) -> None:
+    exporter = EvalResultsExporter()
+    monkeypatch.setattr(exporter, "_read_json_records", lambda _path: ([{"id": "f-eval", "suite": "file", "passed": True, "score": 1, "scenario": "ok"}], [], []))
+    monkeypatch.setattr(exporter, "_read_from_onyx_runtime_config", lambda: ([], [], []))
+    monkeypatch.setattr(exporter, "_read_from_service_api", lambda: ([], [], ["service malformed"], "https://onyx/evals"))
+
+    rows = exporter.export()
+
+    assert rows[0]["id"] == "f-eval"
+    assert rows[0]["source_mode"] == SOURCE_MODE_FILE_BACKED
+    assert "service malformed" in rows[0]["source_errors"]
+
+
+def test_runtime_events_exporter_partial_availability_uses_db_when_service_empty(monkeypatch) -> None:
+    exporter = RuntimeEventsExporter()
+    monkeypatch.setattr(exporter, "_read_from_live_runtime_logs", lambda: ([], ["no live"], [], ""))
+    monkeypatch.setattr(exporter, "_read_from_service_api", lambda: ([], ["service empty"], [], "https://onyx/events"))
+    monkeypatch.setattr(exporter, "_read_from_onyx_db", lambda: ([{"request_id": "req-1", "trace_id": "trace-1", "event_type": "request.start", "actor_id": "actor", "tenant_id": "tenant", "event_payload": {}}], [], []))
+    monkeypatch.setattr(exporter, "_read_jsonl_records", lambda _path: ([], [], []))
+
+    rows = exporter.export()
+
+    assert rows
+    assert rows[0]["event_payload"]["source_mode"] in {SOURCE_MODE_DB_BACKED, SOURCE_MODE_LIVE}
+    assert rows[0]["event_payload"]["fallback_used"] is True
