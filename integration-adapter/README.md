@@ -74,6 +74,18 @@ Proven vs inferred guidance:
 
 **Unconfirmed:** canonical runtime hook not validated in this workspace for all deployment modes.
 
+
+## Defensibility documentation boundary
+
+For close-review claim hygiene across the workspace:
+
+- **Implemented:** See `../docs/defensibility-claims.md` for a strict split of
+  - demonstrated in code,
+  - demonstrated in tests,
+  - conceptual only,
+  - future work.
+- **Unconfirmed:** canonical runtime hook not validated in this workspace.
+
 ## Included modules
 
 - `integration_adapter/config.py` — adapter configuration / artifact root handling.
@@ -90,6 +102,14 @@ Proven vs inferred guidance:
 - `integration_adapter/demo_scenario.py` — end-to-end demo runner.
 - `integration_adapter/artifact_retention.py` — profile-aware artifact retention planning and cleanup CLI.
 - `integration_adapter/health_report.py` — operator-focused health summary CLI (json/text/metrics formats).
+- `integration_adapter/control_matrix.py` — auto-generates reviewer control matrix from adversarial scenario packs + default harness mappings.
+- `integration_adapter/evidence_report.py` — generates conservative evidence summary outputs (markdown/json/optional html) from artifacts and control mappings.
+- `integration_adapter/launch_gate_bridge.py` — bridges eval results into a launch-gate style verdict with conservative baseline comparison semantics.
+
+## Threat model package
+
+- **Implemented:** Reviewer-facing threat model package is published under `../docs/threat-model/` with sections for system overview, assets, trust boundaries, threat actors, attack paths, control points, residual risks, and an end-to-end secure pipeline walkthrough.
+- **Unconfirmed:** canonical runtime hook not validated in this workspace.
 
 ## Mapping contract
 
@@ -396,3 +416,108 @@ make demo
 
 - **Implemented:** Adapter tests include unit and integration-style coverage.
 - **Unconfirmed:** Untestable runtime assumptions are documented in `../docs/testing-blind-spots.md`.
+
+
+## Practical adversarial harness
+
+- **Implemented:** Compact scenario harness covers prompt injection, poisoned retrieval, policy bypass attempts, and unsafe tool-use attempts.
+- **Implemented:** Each scenario is scored as `pass`, `fail`, or `warn`.
+- **Implemented:** Harness emits machine-readable JSONL + summary JSON and a markdown report under `evals/`.
+- **Implemented:** Retrieval poisoning fixtures cover embedded malicious instructions, misleading authoritative content, hidden overrides, context conflicts, and integrity downgrade attempts (`tests/fixtures/adversarial/retrieval_poisoning/`).
+- **Implemented:** Data leakage / unsafe output fixtures cover direct sensitive disclosure, tool-result leakage, policy-conflicting outputs, unsafe restricted summaries, and context carry-through leakage (`tests/fixtures/adversarial/output_leakage/`).
+- **Partially Implemented:** Tool-use scenario is `warn` when no tool inventory is discovered in the artifact root.
+
+Run a quick demo:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.adversarial_harness --artifacts-root artifacts/logs --demo
+```
+
+Run retrieval poisoning scenario pack:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.adversarial_harness \
+  --artifacts-root artifacts/logs \
+  --scenario-file tests/fixtures/adversarial/retrieval_poisoning/scenarios.json
+```
+
+
+Run output leakage scenario pack:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.adversarial_harness \
+  --artifacts-root artifacts/logs \
+  --scenario-file tests/fixtures/adversarial/output_leakage/scenarios.json
+```
+
+
+## Reviewer control matrix
+
+- **Implemented:** Auto-generated reviewer-friendly matrix maps threat -> control -> implementation module -> test coverage -> evidence artifact.
+- **Partially Implemented:** Matrix coverage follows maintained adversarial scenario packs and default harness scenarios.
+- **Unconfirmed:** canonical runtime hook not validated in this workspace.
+
+Generate/update the matrix:
+
+```bash
+make control-matrix
+```
+
+Direct command:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.control_matrix --output-doc ../docs/control-matrix.md
+```
+
+
+## Automated evidence summary workflow
+
+- **Implemented:** Generates evidence summary outputs from current artifacts and control matrix mappings without claiming unverified production enforcement.
+- **Implemented:** Output formats include markdown and JSON, with optional HTML rendering.
+- **Partially Implemented:** Content fidelity depends on available artifacts in the configured artifacts root.
+- **Unconfirmed:** canonical runtime hook not validated in this workspace.
+
+Generate reports:
+
+```bash
+make evidence-summary
+```
+
+Direct command:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.evidence_report \
+  --artifacts-root artifacts/logs \
+  --output-md ../docs/evidence-summary.md \
+  --output-json ../docs/evidence-summary.json \
+  --output-html ../docs/evidence-summary.html
+```
+
+
+## Launch-gate bridge verdict workflow
+
+- **Implemented:** Produces a launch-gate style verdict from current evaluation artifacts and control mappings.
+- **Implemented:** Verdict explicitly reports core control presence, adversarial-test posture, remaining risks, and relative baseline-safety signal.
+- **Partially Implemented:** Baseline safety conclusion is artifact-relative and not a production runtime enforcement proof.
+- **Unconfirmed:** canonical runtime hook not validated in this workspace.
+
+Generate bridge verdict:
+
+```bash
+make launch-gate-bridge
+```
+
+Direct command:
+
+```bash
+cd integration-adapter
+python -m integration_adapter.launch_gate_bridge \
+  --artifacts-root artifacts/logs \
+  --output-json ../docs/launch-gate-bridge.example.json \
+  --output-md ../docs/launch-gate-bridge.example.md
+```

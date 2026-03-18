@@ -24,6 +24,10 @@ integration-adapter-ci-smoke = "integration_adapter.ci_smoke:main"
 integration-adapter-verify-integrity = "integration_adapter.verify_artifact_integrity:main"
 integration-adapter-retention = "integration_adapter.artifact_retention:main"
 integration-adapter-health = "integration_adapter.health_report:main"
+integration-adapter-adversarial = "integration_adapter.adversarial_harness:main"
+integration-adapter-control-matrix = "integration_adapter.control_matrix:main"
+integration-adapter-evidence-report = "integration_adapter.evidence_report:main"
+integration-adapter-launch-gate-bridge = "integration_adapter.launch_gate_bridge:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
