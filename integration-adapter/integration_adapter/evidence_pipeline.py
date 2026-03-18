@@ -1,5 +1,5 @@
 """
-Implemented: one-command evidence pipeline orchestration for collection, artifact generation, and launch-gate execution.
+Implemented: one-command evidence pipeline orchestration for collection, artifact generation, and Launch Gate execution.
 Partially Implemented: live runtime extraction depends on environment/runtime hooks used by collection/exporters.
 Demo-only: `--demo` mode uses adapter demo data paths when live runtime data is unavailable.
 Unconfirmed: production runtime hook parity across all deployment topologies is not validated by this CLI alone.
@@ -45,7 +45,7 @@ def _verify_expected_outputs(root: Path) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run collection -> artifact generation -> launch-gate evaluation in one command"
+        description="Run collection -> artifact generation -> Launch Gate evaluation in one command"
     )
     parser.add_argument("--demo", action="store_true", help="force demo mode")
     parser.add_argument("--profile", default=None, choices=["demo", "dev", "ci", "prod_like"], help="execution profile override")
@@ -97,7 +97,7 @@ def main() -> int:
             for decision in warn_only:
                 print(f"- {decision.contract_name}: expected={decision.expected_version}, actual={decision.actual_version}, reason={decision.reason}")
 
-        # Implemented: run launch-gate against the same artifacts root used in this pipeline execution.
+        # Implemented: run Launch Gate against the same artifacts root used in this pipeline execution.
         launch_gate_path = run_launch_gate(config=AdapterConfig(artifacts_root=artifacts.artifacts_root, profile=profile))
         print(f"[integration-adapter] run_launch_gate complete: {launch_gate_path}")
 

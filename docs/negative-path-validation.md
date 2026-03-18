@@ -5,14 +5,14 @@ This document summarizes deterministic failure/adversarial-path checks currently
 ## Covered scenarios (Implemented)
 
 - malformed source documents (`validate_config --strict-sources`, exporter malformed-line handling)
-- incompatible schema versions (pipeline compatibility blocking + launch-gate contract checks)
-- stale critical artifacts (launch-gate freshness fail-closed)
-- missing identity/authz evidence (launch-gate `identity_authz_evidence_presence` FAIL)
-- missing/unknown MCP classification (launch-gate `mcp_inventory_classified` WARN)
-- partial exporter failure (launch-gate `exporter_degradation` FAIL on high parse failures)
+- incompatible schema versions (pipeline compatibility blocking + Launch Gate contract checks)
+- stale critical artifacts (Launch Gate freshness fail-closed)
+- missing identity/authz evidence (Launch Gate `identity_authz_evidence_presence` FAIL)
+- missing/unknown MCP classification (Launch Gate `mcp_inventory_classified` WARN)
+- partial exporter failure (Launch Gate `exporter_degradation` FAIL on high parse failures)
 - artifact write failure (pipeline writes failed-run adapter health and raises)
 - synthetic fallback in `prod_like` (profile safeguards block)
-- launch-gate fail-closed behavior for critical evidence/malformed artifacts
+- Launch Gate fail-closed behavior for critical evidence/malformed artifacts
 - evidence tampering signal detection (contract vs audit normalized-schema mismatch fails)
 
 ## Test references

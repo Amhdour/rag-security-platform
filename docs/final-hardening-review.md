@@ -15,7 +15,7 @@
 - **Partially Implemented:** CI is deterministic for adapter scope, but no deployment-runtime parity job exists yet.
 
 ### 2) Artifact retention and cleanup safety
-- **Implemented:** Profile-aware retention windows, dry-run default, explicit `--apply` mode, and preservation safeguards for required files + latest successful launch-gate runs.
+- **Implemented:** Profile-aware retention windows, dry-run default, explicit `--apply` mode, and preservation safeguards for required files + latest successful Launch Gate runs.
 - **Implemented:** Retention outcomes are persisted into adapter health artifacts for operator traceability.
 
 ### 3) Runtime extraction strength and parity
@@ -24,12 +24,12 @@
 - **Unconfirmed:** canonical runtime hook not validated in this workspace.
 
 ### 4) Artifact integrity strength
-- **Implemented:** Hash-based manifest verification is fail-closed in both verifier and launch-gate.
+- **Implemented:** Hash-based manifest verification is fail-closed in both verifier and Launch Gate.
 - **Partially Implemented:** Optional signed-manifest mode (HMAC-SHA256) is implemented and tested.
 - **Unconfirmed:** no asymmetric key signatures, transparency log, or external attestation chain.
 
 ### 5) Operator observability
-- **Implemented:** Adapter health artifacts expose source modes, fallback counts, parse/validation failures, launch-gate outcomes, freshness, integrity, and retention outcomes.
+- **Implemented:** Adapter health artifacts expose source modes, fallback counts, parse/validation failures, Launch Gate outcomes, freshness, integrity, and retention outcomes.
 - **Implemented:** Operator health CLI supports `json`, `text`, and metrics-style outputs for low-noise triage.
 
 ### 6) Documentation honesty
@@ -48,7 +48,7 @@
 ## What is now production-oriented
 
 1. **Implemented:** deterministic adapter CI pipeline with provenance + tests + smoke + integrity verification.
-2. **Implemented:** fail-closed integrity + launch-gate behavior for missing/tampered critical artifacts.
+2. **Implemented:** fail-closed integrity + Launch Gate behavior for missing/tampered critical artifacts.
 3. **Implemented:** safe retention lifecycle management with destructive action explicit and reviewable.
 4. **Implemented:** operator-focused health reporting suitable for troubleshooting degraded runs.
 5. **Implemented:** explicit fallback/source metadata across exporters to avoid hidden degradation.

@@ -1,0 +1,12 @@
+{
+  "event_type": "policy.decision",
+  "decision": "deny",
+  "stage": "input",
+  "timestamp": "1970-01-01T00:00:00Z",
+  "request_id": "placeholder-request-id",
+  "control_name": "placeholder_control",
+  "threat_type": "placeholder_threat",
+  "reason": "Placeholder sample for dashboard ingestion contract validation.",
+  "severity": "medium",
+  "placeholder": true
+}

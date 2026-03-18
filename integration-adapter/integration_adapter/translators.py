@@ -40,7 +40,7 @@ def _safe_bool(value: object, default: bool = False) -> bool:
 
 
 def translate_connectors(payload: list[dict[str, Any]]) -> list[InventoryRecord]:
-    """Translate Onyx connectors/indexed sources into starter-kit inventory rows.
+    """Translate Onyx connectors/indexed sources into Secure Starter Kit inventory rows.
 
     TODO(onyx-runtime-hook): confirm canonical Onyx connector inventory endpoint/query,
     including tenant-scoped index status and sync state fields.
@@ -94,7 +94,7 @@ def translate_retrieval_events(payload: list[dict[str, Any]]) -> list[Normalized
 
 
 def translate_tool_inventory(payload: list[dict[str, Any]]) -> list[InventoryRecord]:
-    """Translate Onyx tools into starter-kit inventory rows."""
+    """Translate Onyx tools into Secure Starter Kit inventory rows."""
 
     return map_tool_inventory(payload)
 
@@ -171,7 +171,7 @@ def translate_tool_decisions(payload: list[dict[str, Any]]) -> list[NormalizedAu
 
 
 def translate_mcp_inventory(payload: list[dict[str, Any]]) -> list[InventoryRecord]:
-    """Translate MCP server inventory into starter-kit inventory rows.
+    """Translate MCP server inventory into Secure Starter Kit inventory rows.
 
     TODO(onyx-runtime-hook): confirm canonical Onyx MCP inventory source and field names
     across deployment modes.
@@ -229,7 +229,7 @@ def translate_mcp_usage(payload: list[dict[str, Any]]) -> list[NormalizedAuditEv
 
 
 def translate_eval_outputs(payload: list[dict[str, Any]]) -> list[StarterKitEvalRow]:
-    """Translate Onyx eval outputs to starter-kit eval JSONL row shape.
+    """Translate Onyx eval outputs to Secure Starter Kit eval JSONL row shape.
 
     TODO(onyx-runtime-hook): confirm canonical Onyx eval result format across local/remote
     eval providers and mapping for severity/category labels.

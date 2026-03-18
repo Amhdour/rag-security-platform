@@ -23,7 +23,7 @@ This document defines adapter execution profiles used to keep runs honest, repea
 4. `prod_like` + fallback usage is blocked.
 5. `prod_like` + stale or missing critical evidence is blocked.
 
-**Implemented:** Profile freshness thresholds are applied as defaults for launch-gate freshness checks by setting:
+**Implemented:** Profile freshness thresholds are applied as defaults for Launch Gate freshness checks by setting:
 - `INTEGRATION_ADAPTER_MAX_CRITICAL_EVIDENCE_AGE_SECONDS`
 - `INTEGRATION_ADAPTER_MAX_WARNING_EVIDENCE_AGE_SECONDS`
 

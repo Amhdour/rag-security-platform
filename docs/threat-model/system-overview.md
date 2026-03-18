@@ -22,5 +22,5 @@ This repository is a three-plane integration workspace:
 
 - **Implemented:** Artifact generation pipeline (`collect_from_onyx`, `generate_artifacts`, `run_launch_gate`).
 - **Implemented:** Adversarial harness for prompt injection, retrieval poisoning, output leakage, policy bypass, and unsafe-tool attempts where detectable.
-- **Implemented:** Control-matrix/evidence-report/launch-gate-bridge documentation outputs.
+- **Implemented:** Control-matrix/evidence-report/Launch Gate bridge documentation outputs.
 - **Unconfirmed:** Runtime hook parity for all deployment modes.

@@ -7,7 +7,7 @@ This repository includes strong artifact-level verification, but some runtime as
 - Adapter schema validation and event vocabulary checks.
 - Exporter behavior for file-backed data, missing files, malformed inputs.
 - Artifact generation and output file completeness.
-- Launch-gate pass/warn/fail logic and fail-closed behavior.
+- Launch Gate pass/warn/fail logic and fail-closed behavior.
 - Dashboard compatibility parsing for generated artifacts.
 - End-to-end demo pipeline smoke flow.
 
@@ -29,7 +29,7 @@ This repository includes strong artifact-level verification, but some runtime as
    - `integration-adapter/tests/test_artifact_generation.py`
    - `integration-adapter/tests/test_pipeline.py`
 
-5. **Launch-gate PASS / WARN / FAIL**
+5. **Launch Gate PASS / WARN / FAIL**
    - `integration-adapter/tests/test_launch_gate_evaluator.py`
 
 6. **Dashboard artifact compatibility (where testable)**
@@ -54,16 +54,16 @@ This repository includes strong artifact-level verification, but some runtime as
    - They do not prove that every deployed Onyx runtime emits identical event semantics.
 
 3. **Production enforcement guarantees**
-   - Launch-gate validates evidence presence/quality.
+   - Launch Gate validates evidence presence/quality.
    - It does not by itself prove runtime policy/tool enforcement in production.
 
 ## Mitigation guidance
 
-- Treat adapter launch-gate results as evidence-quality checks.
+- Treat adapter Launch Gate results as evidence-quality checks.
 - For production confidence, run environment-specific integration tests against live Onyx services with pinned commits and known data fixtures.
 - Keep `demo_scenario.report.json` real-vs-synthetic markers in review workflows.
 
 ## Current automated suite scope
 
-- **Adapter unit + integration-style tests** run under `integration-adapter/tests/` and cover schema validation, exporter normalization, malformed/missing input handling, artifact generation, launch-gate pass/warn/fail, dashboard reader compatibility, and demo smoke.
-- **Starter Kit dashboard targeted tests** cover read-only API behavior, malformed artifact handling, and local/sibling artifact root resolution.
+- **Adapter unit + integration-style tests** run under `integration-adapter/tests/` and cover schema validation, exporter normalization, malformed/missing input handling, artifact generation, Launch Gate pass/warn/fail, dashboard reader compatibility, and demo smoke.
+- **Secure Starter Kit dashboard targeted tests** cover read-only API behavior, malformed artifact handling, and local/sibling artifact root resolution.

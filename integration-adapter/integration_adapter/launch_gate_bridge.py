@@ -131,7 +131,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
     lines = [
         "# Launch Gate Bridge Verdict",
         "",
-        "**Implemented:** This verdict bridges evaluation artifacts into a launch-gate style summary.",
+        "**Implemented:** This verdict bridges evaluation artifacts into a Launch Gate style summary.",
         "**Unconfirmed:** canonical runtime hook not validated in this workspace.",
         "",
         f"- Verdict: `{payload.get('verdict', 'unknown')}`",
@@ -157,9 +157,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
     else:
         lines.append("- None observed.")
 
-    lines.extend(["", "## Launch-gate context"])
+    lines.extend(["", "## Launch Gate context"])
     context = payload.get("launch_gate_context", {})
-    lines.append(f"- Latest launch-gate artifact: `{context.get('latest_launch_gate_json', '')}`")
+    lines.append(f"- Latest Launch Gate artifact: `{context.get('latest_launch_gate_json', '')}`")
     lines.append(f"- Status: `{context.get('status', 'unknown')}`")
 
     lines.extend(["", "## Limitations"])
@@ -177,7 +177,7 @@ def write_outputs(*, payload: dict[str, Any], output_json: Path, output_md: Path
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Bridge eval results to a launch-gate style verdict")
+    parser = argparse.ArgumentParser(description="Bridge eval results to a Launch Gate style verdict")
     parser.add_argument("--artifacts-root", default="artifacts/logs", help="artifacts root")
     parser.add_argument("--output-json", default="../docs/launch-gate-bridge.example.json", help="output json path")
     parser.add_argument("--output-md", default="../docs/launch-gate-bridge.example.md", help="output markdown path")

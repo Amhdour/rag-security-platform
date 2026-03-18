@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Versioned contract policy for adapter source/normalized/artifact/launch-gate schemas.
+"""Versioned contract policy for adapter source/normalized/artifact/Launch Gate schemas.
 
 Implemented: explicit schema-version constants and compatibility decisions.
 Implemented: blocked/warn-only/allowed outcomes for upgrade/downgrade handling.

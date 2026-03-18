@@ -6,7 +6,7 @@
 ## Executive summary
 - Statement: Implemented: Evidence report summarizes current workspace artifacts without claiming unverified production enforcement.
 - Eval rows analyzed: 5
-- Latest launch-gate status: `unknown`
+- Latest Launch Gate status: `unknown`
 - Outcomes: `{"fail": 0, "pass": 4, "warn": 1}`
 
 ## Threats covered
@@ -52,7 +52,7 @@
 
 ## Limitations
 - Eval run contains 1 warning scenarios.
-- Launch-gate status is `unknown` in latest artifact.
+- Launch Gate status is `unknown` in latest artifact.
 
 ## Reviewer appendix (file references)
 - Implementation modules:

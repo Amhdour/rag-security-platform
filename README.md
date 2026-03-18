@@ -1,102 +1,210 @@
 # rag-security-platform
 
-rag-security-platform is a conceptual and technical framework focused on improving the security posture of Retrieval-Augmented Generation (RAG) systems.
+## Repository Role in AI Trust & Security System
 
-## In one sentence
+**Primary role (exact): Evaluation.**
 
-A security-oriented framework for designing, evaluating, and hardening RAG-based AI systems.
+**Implemented:** This repository is the security testing + evidence plane for the overall system. It is responsible for producing normalized artifacts and launch-readiness evidence from runtime-aligned inputs.
 
-## Overview
+System-wide role map:
+- `myStarterKit` → Implementation (secure runtime)
+- `rag-security-platform` (**this repository**) → **Evaluation** (security testing & evidence)
+- `myStarterKit-maindashb` (`myStarterKit-maindashb-main/` in this workspace) → Observability (dashboard)
+- `website` → Presentation
 
-Retrieval-Augmented Generation (RAG) has become a common architecture for building AI assistants and knowledge systems. However, RAG systems introduce new security risks such as prompt injection, malicious retrieval content, data leakage, and unauthorized tool usage.
 
-rag-security-platform explores structured approaches to securing RAG pipelines by defining security layers, trust boundaries, and operational controls for AI systems.
+## Terminology baseline
 
-## Key security challenges addressed
+- **AI Trust & Security Readiness**: system-wide program name used in this repository.
+- **Layer Retrofit**: additive integration approach (no destructive merge of upstream repos).
+- **Secure Starter Kit**: governance/consumption counterpart referenced by this evaluation repo.
+- **Launch Gate**: readiness verdict stage generated from evidence artifacts.
 
-Modern RAG systems can be vulnerable to:
-
-- prompt injection attacks
-- malicious or poisoned retrieval sources
-- data exfiltration through model outputs
-- unsafe tool execution
-- weak access control to external resources
-- lack of observability and auditability
-
-This repository focuses on identifying and structuring controls that help reduce these risks.
-
-## Core security concepts
-
-The platform focuses on:
-
-- RAG trust boundary design
-- retrieval source validation
-- policy-based guardrails
-- tool authorization control
+Supporting control terms used consistently in docs:
+- prompt injection defense
+- retrieval validation
+- tool authorization
 - runtime monitoring
-- audit logging
-- adversarial testing of AI systems
+- auditability
 
-## Why this project matters
+## Why this role assignment is enforced
 
-As organizations increasingly integrate RAG architectures into production systems, it becomes essential to treat AI pipelines as security-sensitive infrastructure.
+Role determination is based on code present in this repo:
+- **Implemented:** evidence orchestration (`integration_adapter/evidence_pipeline.py`, `pipeline.py`)
+- **Implemented:** artifact generation (`integration_adapter/generate_artifacts.py`, `artifact_output.py`)
+- **Implemented:** Launch Gate evidence evaluation (`integration_adapter/run_launch_gate.py`, `launch_gate_evaluator.py`)
+- **Implemented:** adversarial and control-matrix evaluation paths (`integration_adapter/adversarial_harness.py`, `control_matrix.py`)
 
-rag-security-platform promotes a structured approach to understanding the attack surface of AI systems and applying cybersecurity practices to their design and deployment.
+## What this repo does NOT do
 
-## Practical evaluation track
+- **Implemented:** runtime feature implementation inside `onyx-main/`.
+- **Implemented:** mutating dashboard behavior inside `myStarterKit-maindashb-main/`.
+- **Implemented:** website presentation logic.
 
-This workspace now includes a concrete conversion plan that reframes the repo as a practical **RAG security evaluation and evidence** system (not only a conceptual framework):
+Unclear or deployment-specific runtime-hook claims must remain **Unconfirmed** unless implemented and tested in this workspace.
 
-- `docs/rag-security-evaluation-conversion-plan.md`
-- `integration-adapter/integration_adapter/adversarial_harness.py` (compact executable adversarial harness)
-- `integration-adapter/tests/fixtures/adversarial/retrieval_poisoning/scenarios.json` (realistic retrieval poisoning scenario pack)
-- `integration-adapter/tests/fixtures/adversarial/output_leakage/scenarios.json` (data leakage and unsafe output scenario pack)
-- `docs/control-matrix.md` (auto-generated reviewer control matrix: threat -> control -> implementation -> tests -> evidence)
-- `docs/evidence-summary.md` + `docs/evidence-summary.json` (+ optional HTML) generated from current artifacts with conservative factual language
-- `docs/launch-gate-bridge.md` + example outputs (`docs/launch-gate-bridge.example.json/.md`) for evaluation-to-verdict bridging
-- `docs/threat-model/README.md` (practical threat model package: system overview, assets, boundaries, actors, attack paths, controls, residual risks)
-- `docs/threat-model/pipeline-walkthrough.md` (end-to-end secure RAG pipeline walkthrough with stage-level risk/control/implementation/evidence mapping)
-- `docs/diagrams/README.md` (Mermaid diagrams for architecture, trust boundaries, attack paths, control coverage, and evidence flow)
-  - `docs/diagrams/rag-security-architecture.md`
-  - `docs/diagrams/trust-boundary-map.md`
-  - `docs/diagrams/attack-path-map.md`
-  - `docs/diagrams/control-coverage-map.md`
-  - `docs/diagrams/evidence-generation-flow.md`
+Misplaced components (kept read-only in this workspace):
+- **Implemented:** `onyx-main/` is not implementation ownership here; it is a runtime compatibility mirror.
+- **Implemented:** `myStarterKit-maindashb-main/` is not dashboard ownership here; it is an observability compatibility mirror.
 
-The plan contains:
+## Role-aligned folder structure
 
-- current-state assessment,
-- target-state architecture,
-- prioritized implementation backlog,
-- and the first five pull requests to execute.
+### Primary owned evaluation paths
+- `integration-adapter/` — evaluation pipeline, normalization, artifact generation, Launch Gate checks
+- `docs/` — evaluation evidence, threat-model, compatibility, and claim-boundary documentation
+- `scripts/` — workspace validation utilities used by evaluation workflows
 
-Status-bearing claims in that plan are explicitly labeled as **Implemented**, **Partially Implemented**, **Demo-only**, **Unconfirmed**, or **Planned**.
+### Reference mirrors (read-only integration context)
+- `onyx-main/` — runtime reference mirror for extraction compatibility
+- `myStarterKit-maindashb-main/` — observability reference mirror for read-only compatibility
+
+## Integration boundary (artifact-first)
+
+**Implemented:** integration across planes is through artifacts, not runtime coupling.
+
+Canonical outputs (generated under `integration-adapter/artifacts/logs/`):
+- `audit.jsonl`
+- `replay/*.replay.json`
+- `evals/*.jsonl`
+- `launch_gate/*.json`
+- `launch_gate/*.md`
 
 
-## Defensibility claim boundaries
+## Artifacts & Evidence
 
-To keep reviews strict and avoid inflated claims, this repository now has a dedicated claim-boundary section:
+**Implemented:** Shared security evidence schema is published for cross-plane consumers:
+- Schema: `artifacts_schema/schema.json`
+- Example: `artifacts_schema/example_artifact.json`
+- Integration contract: `integration/integration.md`
 
+Intended consumers:
+- evaluation workflows in this repository,
+- read-only observability/dashboard integrations,
+- website/presentation reporting pipelines.
+
+Required schema fields:
+- `event_type`
+- `control_name`
+- `threat_type`
+- `stage` (`input|retrieval|context|model|tool|output|logging`)
+- `decision` (`allow|deny|warn`)
+- `reason`
+- `timestamp`
+- `request_id`
+- `severity`
+
+
+## Evidence Produced by This Repository
+
+**Implemented:** Primary evidence outputs are produced by `integration-adapter` runs under:
+- `integration-adapter/artifacts/logs/`
+
+Repository-level placeholder examples (non-synthetic, documentation-only):
+- Sample logs placeholder: `artifacts/sample_logs.placeholder.log`
+- Sample test output placeholder: `artifacts/sample_test_output.placeholder.txt`
+- Sample evaluation result placeholder: `artifacts/sample_evaluation_result.placeholder.json`
+
+These placeholders are intentionally non-authoritative and exist only to define artifact locations.
+Use pipeline-generated artifacts for real evidence consumption.
+
+
+## Reviewer Quick Path
+
+### 5-minute path
+1. Run:
+   - `python scripts/validate_upstream_provenance_lock.py`
+   - `cd integration-adapter && python -m pytest -q`
+2. Inspect:
+   - `artifacts_schema/schema.json`
+   - `integration/integration.md`
+   - `docs/system-coherence.md`
+3. Expected outputs:
+   - provenance lock `PASS`
+   - pytest summary with passing tests (for example `129 passed`)
+
+### 15-minute path
+1. Generate demo evidence:
+   - `make evidence-demo`
+2. Verify integrity + gate:
+   - `cd integration-adapter && python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs`
+   - `cd integration-adapter && python -m integration_adapter.run_launch_gate --artifacts-root artifacts/logs`
+3. Inspect generated evidence:
+   - `integration-adapter/artifacts/logs/audit.jsonl`
+   - `integration-adapter/artifacts/logs/evals/`
+   - `integration-adapter/artifacts/logs/launch_gate/`
+
+Evidence artifact locations:
+- Primary: `integration-adapter/artifacts/logs/`
+- Contract schema: `artifacts_schema/schema.json`
+- Integration contract: `integration/integration.md`
+
+
+## Dashboard Integration
+
+**Implemented:** Dashboard-facing ingestion should consume JSON evidence records aligned to `artifacts_schema/schema.json`.
+
+Required dashboard-ingestion fields:
+- `event_type`
+- `decision`
+- `stage`
+- `timestamp`
+- `request_id`
+
+Sample JSON output for ingestion contract checks:
+- `artifacts/dashboard_ingestion_sample.json`
+
+Primary generated evidence location:
+- `integration-adapter/artifacts/logs/`
+
+
+## Launch Gate Readiness Summary
+
+**Implemented:** Repository-level readiness signal is exposed in `launch_gate_summary.json` with:
+- `controls_present`
+- `tests_passed`
+- `high_risk_findings`
+- `readiness_status` (`pass|conditional|fail`)
+
+Current file is a conservative repository summary artifact; use generated evidence under `integration-adapter/artifacts/logs/launch_gate/` for run-specific verdicts.
+
+
+## Claims vs Evidence
+
+Claim audit status used in this repository:
+- **Proven (code/test):** implemented behavior with local test coverage in this workspace.
+- **Partially Proven:** implemented artifacts/contracts with deployment/runtime caveats.
+- **Conceptual:** architecture or assurance statements not fully validated here.
+
+Audit references:
+- `docs/claims-audit.md`
 - `docs/defensibility-claims.md`
 
-It explicitly separates:
-- demonstrated in code,
-- demonstrated in tests,
-- conceptual only (**Unconfirmed**),
-- future work (**Planned**).
+Conservative boundary:
+- Unconfirmed: canonical runtime hook not validated in this workspace.
 
-## Who this project is for
+## Practical commands
 
-- AI security researchers
-- cybersecurity professionals
-- AI platform engineers
-- organizations deploying RAG systems
-- teams evaluating trustworthy AI architectures
+- `make provenance-check`
+- `make adapter-ci`
+- `make evidence`
+- `make launch-gate-bridge`
 
-## Related projects
+## Related Repositories in AI Trust & Security System
 
-- https://github.com/Amhdour/myStarterKit
-- https://github.com/Amhdour/myStarterKit-maindashb
+- **myStarterKit**  
+  - **Role:** implementation plane  
+  - **Link:** https://github.com/Amhdour/myStarterKit  
+  - **Contribution:** runtime application behavior and security control implementation.
+
+- **rag-security-platform** (this repository)  
+  - **Role:** evaluation plane  
+  - **Link:** https://github.com/Amhdour/rag-security-platform  
+  - **Contribution:** evidence normalization, adversarial evaluation, artifact generation, and Launch Gate-ready readiness outputs.
+
+- **myStarterKit-maindashb**  
+  - **Role:** dashboard/observability plane  
+  - **Link:** https://github.com/Amhdour/myStarterKit-maindashb  
+  - **Contribution:** read-only observability and reviewer-facing evidence visualization.
 
 ## Website
 

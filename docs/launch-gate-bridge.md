@@ -2,7 +2,7 @@
 
 ## Purpose
 
-**Implemented:** This bridge converts adapter evaluation outputs into a launch-gate style verdict that is reviewer-friendly and artifact-backed.
+**Implemented:** This bridge converts adapter evaluation outputs into a Launch Gate style verdict that is reviewer-friendly and artifact-backed.
 
 It summarizes:
 - whether core controls exist,

@@ -11,7 +11,7 @@ from integration_adapter.pipeline import generate_artifacts
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate starter-kit-compatible artifacts from collected data")
+    parser = argparse.ArgumentParser(description="Generate Secure Starter Kit-compatible artifacts from collected data")
     parser.add_argument("--demo", action="store_true", help="force demo mode")
     parser.add_argument("--artifacts-root", default=None, help="override artifacts root for this run")
     parser.add_argument("--profile", default=None, choices=["demo", "dev", "ci", "prod_like"], help="execution profile override")

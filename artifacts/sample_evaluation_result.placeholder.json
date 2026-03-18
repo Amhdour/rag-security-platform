@@ -1,0 +1,5 @@
+{
+  "placeholder": true,
+  "note": "No synthetic evaluation data included. Replace with real evaluation output from integration-adapter/artifacts/logs/evals/.",
+  "source": "integration-adapter evidence pipeline"
+}

@@ -45,7 +45,7 @@ python -m integration_adapter.health_report --artifacts-root artifacts/logs --fo
 - parse failure count
 - validation failure count
 - integrity verification result (`ok`, mode, signature status/errors)
-- launch-gate status and failure reasons
+- Launch Gate status and failure reasons
 - artifact freshness outcomes (`stale_critical`, `missing_critical` counts)
 - retention/cleanup outcomes when available (`deleted_count`, dry-run/apply context)
 - failure category for operator triage (`none`, `degraded`, `launch_gate_no_go`, `integrity_failure`, `artifact_write_failure`, `pipeline_failure`)
@@ -59,13 +59,13 @@ python -m integration_adapter.health_report --artifacts-root artifacts/logs --fo
 Recommended triage order:
 1. check `failure_category`,
 2. check `integrity` result,
-3. check launch-gate blockers and freshness evidence,
+3. check Launch Gate blockers and freshness evidence,
 4. inspect exporter source modes + fallback counts,
 5. inspect retention outcome if cleanup recently ran.
 
-## Launch-gate integration
+## Launch Gate integration
 
-**Implemented:** Launch-gate consumes adapter-health and integrity evidence and emits:
+**Implemented:** Launch Gate consumes adapter-health and integrity evidence and emits:
 
 - `WARN` when health reports degraded execution,
 - `FAIL` when health reports failed execution,
@@ -74,5 +74,5 @@ Recommended triage order:
 ## Troubleshooting guidance
 
 - **Implemented:** Inspect `exporters` diagnostics in the health summary for source selection, warnings, and extraction errors.
-- **Implemented:** Use launch-gate blockers/residual risks together with health counters to identify degraded runs.
+- **Implemented:** Use Launch Gate blockers/residual risks together with health counters to identify degraded runs.
 - **Unconfirmed:** canonical runtime hook not validated in this workspace.

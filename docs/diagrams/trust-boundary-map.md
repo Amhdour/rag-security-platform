@@ -16,7 +16,7 @@ flowchart LR
     B3R["Risks: over-claiming from demo evidence, reviewer blind spots"]
 
     B1C["Controls: schema validation, source_mode metadata, required evidence checks"]
-    B2C["Controls: deterministic writers, integrity manifest, launch-gate fail-closed"]
+    B2C["Controls: deterministic writers, integrity manifest, Launch Gate fail-closed"]
     B3C["Controls: control matrix + evidence report + conservative status labels"]
 
     B1R -.-> ADAPTER

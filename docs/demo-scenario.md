@@ -13,7 +13,7 @@
 
 ## Status labels used here
 
-- **Implemented**: adapter artifact writing, launch-gate generation, dashboard artifact-read verification.
+- **Implemented**: adapter artifact writing, Launch Gate generation, dashboard artifact-read verification.
 - **Partially Implemented**: real exporter-backed data is used when present in this workspace/runtime.
 - **Demo-only**: synthetic but schema-valid data is used where live hooks are unavailable.
 - **Unconfirmed**: canonical production runtime hooks are not fully validated across all deployment modes in this workspace.
@@ -50,8 +50,8 @@ python -m integration_adapter.demo_scenario --artifacts-root artifacts/logs
   - runtime events
 - **Demo-only:** Falls back to **synthetic schema-valid payloads** where data is unavailable.
 - **Implemented:** Writes normalized artifacts under `artifacts/logs`.
-- **Implemented:** Runs launch-gate evaluation and writes machine + markdown outputs.
-- **Implemented:** Verifies Starter Kit dashboard artifact readers can parse generated evidence.
+- **Implemented:** Runs Launch Gate evaluation and writes machine + markdown outputs.
+- **Implemented:** Verifies Secure Starter Kit dashboard artifact readers can parse generated evidence.
 - **Implemented:** Writes `demo_scenario.report.json` with per-domain real/synthetic labels and remaining realism gaps.
 
 ## Report fields to inspect
@@ -115,7 +115,7 @@ Expected outputs:
 - **Implemented:** `artifact_bundle.contract.json`
 - **Implemented:** `artifact_integrity.manifest.json`
 - **Implemented:** `adapter_health/adapter_run_summary.json`
-- **Implemented:** launch-gate JSON/markdown outputs
+- **Implemented:** Launch Gate JSON/markdown outputs
 - **Implemented:** `demo_scenario.report.json`
 
 Failure conditions:

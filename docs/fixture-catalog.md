@@ -38,7 +38,7 @@ See:
 
 ## Contract tests
 
-Contract tests validating extraction compatibility, normalization, schema validity, and launch-gate behavior:
+Contract tests validating extraction compatibility, normalization, schema validity, and Launch Gate behavior:
 
 - `integration-adapter/tests/test_contract_fixtures.py`
 

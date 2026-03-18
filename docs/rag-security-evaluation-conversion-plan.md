@@ -19,10 +19,10 @@ Status labels used below:
 
 #### Three-plane architecture baseline
 - **Implemented:** Workspace is already structured into runtime (`onyx-main/`), translation (`integration-adapter/`), and governance/observability (`myStarterKit-maindashb-main/`).
-- **Implemented:** Integration boundary is artifact-first (audit, replay, eval, launch-gate outputs), not runtime coupling.
+- **Implemented:** Integration boundary is artifact-first (audit, replay, eval, Launch Gate outputs), not runtime coupling.
 
 #### Adapter pipeline and contracts
-- **Implemented:** `integration-adapter` already supports collect/generate/gate workflows with schema validation and fail-closed launch-gate checks for malformed/missing evidence.
+- **Implemented:** `integration-adapter` already supports collect/generate/gate workflows with schema validation and fail-closed Launch Gate checks for malformed/missing evidence.
 - **Partially Implemented:** Exporters support multiple source modes (`live`, `service_api`, `db_backed`, `file_backed`, `fixture_backed`, `synthetic`) with runtime-hook parity still incomplete.
 - **Implemented:** Identity/authorization evidence normalization exists (`actor_id`, `tenant_id`, `session_id`, `authz_result`, `decision_basis`, `identity_authz_field_sources`, etc.).
 
@@ -32,7 +32,7 @@ Status labels used below:
 - **Unconfirmed:** canonical runtime hook not validated in this workspace.
 
 #### Governance/read-only observability plane
-- **Implemented:** Starter Kit has launch-gate, observability, eval normalization, artifact readers, and tests emphasizing read-only behavior.
+- **Implemented:** Secure Starter Kit has Launch Gate, observability, eval normalization, artifact readers, and tests emphasizing read-only behavior.
 - **Demo-only:** Demo artifacts are present to support reproducible walkthroughs.
 
 ### 1.2 What is missing (gaps to practical evaluation)
@@ -43,7 +43,7 @@ Status labels used below:
 
 #### Claim-to-test linkage
 - **Partially Implemented:** Threat claims reference controls/evidence, but there is no single claim registry that binds each claim to concrete executable tests and artifact fields.
-- **Planned:** Machine-readable control-claim-test matrix used by CI and launch-gate.
+- **Planned:** Machine-readable control-claim-test matrix used by CI and Launch Gate.
 
 #### Evidence automation hardening
 - **Partially Implemented:** Artifact generation is automated, but cryptographic tamper evidence and immutable provenance attestations are not complete.
@@ -64,7 +64,7 @@ A practical RAG security evaluation system should operate as:
 1. Runtime emits or exposes security-relevant events (Onyx plane).
 2. Adapter performs read-only extraction and deterministic normalization.
 3. Adapter runs adversarial evaluation modules and writes evidence artifacts.
-4. Governance plane consumes artifacts read-only and enforces launch-gate decisions.
+4. Governance plane consumes artifacts read-only and enforces Launch Gate decisions.
 5. CI blocks release candidates on integrity failure, schema mismatch, or critical unresolved findings.
 
 ## 2.2 Required target modules (exact)
@@ -161,7 +161,7 @@ Use a deterministic mapping pipeline:
 1. Define claim in `claim_registry.yaml` with status label and acceptance criteria.
 2. Map claim to one or more adversarial scenarios.
 3. Execute scenarios in adapter CI.
-4. Verify expected audit/eval/launch-gate evidence fields exist and satisfy rules.
+4. Verify expected audit/eval/Launch Gate evidence fields exist and satisfy rules.
 5. Emit machine-readable claim verdicts (`implemented`, `partially_implemented`, `unconfirmed`, etc.) with reasons.
 
 ### Example bindings
@@ -236,12 +236,12 @@ Release-quality pipeline should block on:
 
 ### Phase 2 — Claim verification (high priority)
 1. Add machine-readable claim registry.
-2. Add claim verifier consuming eval + audit + launch-gate artifacts.
+2. Add claim verifier consuming eval + audit + Launch Gate artifacts.
 3. Fail CI when **Implemented** claims lack passing evidence.
 
 ### Phase 3 — Evidence integrity & auditability (medium/high)
 1. Add signed digest manifest generation/verification.
-2. Add tamper-detection checks in launch-gate and CI.
+2. Add tamper-detection checks in Launch Gate and CI.
 3. Produce immutable evidence index for governance consumption.
 
 ### Phase 4 — Observability products (medium)
@@ -289,10 +289,10 @@ Release-quality pipeline should block on:
   - tests for tamper detection
 - Outcome: cryptographic tamper-evident evidence pack verification.
 
-### PR-5: Add security scorecard + launch-gate integration
+### PR-5: Add security scorecard + Launch Gate integration
 - Files:
   - `integration-adapter/integration_adapter/reporting/security_scorecard.py`
-  - launch-gate evaluator integration to include scorecard blockers
+  - Launch Gate evaluator integration to include scorecard blockers
   - `myStarterKit-maindashb-main/observability` read-only ingestion support for scorecard artifacts
   - docs update in `docs/adapter-health.md` and observability docs
 - Outcome: auditable, trendable security posture report from executable evidence.

@@ -3,7 +3,7 @@ from __future__ import annotations
 """Pipeline orchestration for adapter evidence flows.
 
 Status labels used in this module:
-- Implemented: artifact generation and launch-gate orchestration from normalized payloads.
+- Implemented: artifact generation and Launch Gate orchestration from normalized payloads.
 - Partially Implemented: live collection depends on optional runtime hooks in exporters.
 - Demo-only: deterministic fallback payloads when live runtime data is unavailable.
 - Unconfirmed: production runtime hook parity is not asserted by this module.
@@ -438,7 +438,7 @@ def generate_artifacts(*, force_demo: bool = False, config: AdapterConfig | None
 
 
 def run_launch_gate(*, config: AdapterConfig | None = None) -> Path:
-    """Evaluate artifacts and emit machine + human launch-gate summaries."""
+    """Evaluate artifacts and emit machine + human Launch Gate summaries."""
 
     cfg = config or AdapterConfig.from_env(default_root="artifacts/logs")
     _apply_profile_freshness_env(cfg.profile)

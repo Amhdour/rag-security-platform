@@ -83,7 +83,7 @@ def _build_report_payload(artifacts_root: Path) -> dict[str, Any]:
         limitations.append(f"Eval run contains {outcomes['fail']} failing scenarios.")
     gate_status = str(launch_gate.get("status", "unknown"))
     if gate_status != "go":
-        limitations.append(f"Launch-gate status is `{gate_status}` in latest artifact.")
+        limitations.append(f"Launch Gate status is `{gate_status}` in latest artifact.")
     if not limitations:
         limitations.append("No additional limitations detected from current artifact set.")
 
@@ -137,7 +137,7 @@ def _to_markdown(payload: dict[str, Any]) -> str:
         "## Executive summary",
         f"- Statement: {summary.get('statement', '')}",
         f"- Eval rows analyzed: {summary.get('eval_rows_analyzed', 0)}",
-        f"- Latest launch-gate status: `{summary.get('latest_launch_gate_status', 'unknown')}`",
+        f"- Latest Launch Gate status: `{summary.get('latest_launch_gate_status', 'unknown')}`",
         f"- Outcomes: `{json.dumps(summary.get('outcomes', {}), sort_keys=True)}`",
         "",
         "## Threats covered",

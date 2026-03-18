@@ -15,8 +15,8 @@
 ## A3 — Insider/operator with artifact access
 
 - Goal: alter evidence after generation to influence governance outcomes.
-- Relevant surfaces: artifact filesystem, replay/eval/launch-gate outputs.
-- **Implemented detection/evidence points:** integrity manifest verification and launch-gate blocker behavior.
+- Relevant surfaces: artifact filesystem, replay/eval/Launch Gate outputs.
+- **Implemented detection/evidence points:** integrity manifest verification and Launch Gate blocker behavior.
 
 ## A4 — Over-privileged tool invoker
 
@@ -28,4 +28,4 @@
 
 - Goal: none (accidental risk through drift/fallbacks/staleness).
 - Relevant surfaces: source-mode fallback, stale evidence, schema drift.
-- **Implemented detection/evidence points:** launch-gate checks for freshness, compatibility, and blocked mismatches.
+- **Implemented detection/evidence points:** Launch Gate checks for freshness, compatibility, and blocked mismatches.

@@ -1,6 +1,6 @@
 # Integration Maturity Model
 
-This model describes incremental maturity for the Onyx + Starter Kit + integration-adapter workspace.
+This model describes incremental maturity for the Onyx + Secure Starter Kit + integration-adapter workspace.
 
 ## Stage 0 — Blueprint
 
@@ -23,7 +23,7 @@ This model describes incremental maturity for the Onyx + Starter Kit + integrati
 - **Implemented:** Adapter package exists with schemas, mappers/translators, artifact writers, and tests.
 
 **Entry criteria**
-- **Implemented:** Adapter can generate starter-kit-shaped artifacts from sample payloads.
+- **Implemented:** Adapter can generate Secure Starter Kit-shaped artifacts from sample payloads.
 - **Implemented:** Schema and malformed-input tests exist.
 
 **Evidence examples**
@@ -63,13 +63,13 @@ This model describes incremental maturity for the Onyx + Starter Kit + integrati
 
 ---
 
-## Stage 4 — Launch-Gate Automation
+## Stage 4 — Launch Gate Automation
 
 **Definition**
-- **Implemented:** Generated adapter artifacts automatically feed launch-gate evaluation workflows.
+- **Implemented:** Generated adapter artifacts automatically feed Launch Gate evaluation workflows.
 
 **Entry criteria**
-- **Implemented:** Eval summaries + launch-gate reports are produced by scripted flow.
+- **Implemented:** Eval summaries + Launch Gate reports are produced by scripted flow.
 - **Implemented:** Failure modes (malformed/missing evidence) are covered by tests.
 
 **Exit criteria**
