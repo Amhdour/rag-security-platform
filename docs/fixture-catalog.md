@@ -20,6 +20,8 @@ This catalog documents pinned fixture sets used for adapter contract tests.
 - MCP inventory
 - eval results
 - runtime event samples (JSONL)
+- adversarial retrieval poisoning scenarios (document fixtures + scenario definitions)
+- adversarial output leakage scenarios (document fixtures + scenario definitions)
 
 ## Provenance metadata
 
@@ -39,3 +41,23 @@ See:
 Contract tests validating extraction compatibility, normalization, schema validity, and launch-gate behavior:
 
 - `integration-adapter/tests/test_contract_fixtures.py`
+
+## Adversarial retrieval poisoning fixture pack
+
+- **Implemented (Sanitized):** fixture documents are sanitized markdown inputs designed to resemble realistic enterprise content while avoiding sensitive data.
+- **Implemented:** scenario definitions live at `integration-adapter/tests/fixtures/adversarial/retrieval_poisoning/scenarios.json`.
+- **Implemented:** each scenario includes `threat`, fixture payload, and `expected_control_behavior` for deterministic scoring tests.
+- **Demo-only:** these fixtures are local test/demo evidence and are not production enforcement proof.
+
+Related tests:
+- `integration-adapter/tests/test_retrieval_poisoning_scenarios.py`
+
+## Adversarial output leakage fixture pack
+
+- **Implemented (Sanitized):** fixture documents model realistic leakage risks without real sensitive data.
+- **Implemented:** scenario definitions live at `integration-adapter/tests/fixtures/adversarial/output_leakage/scenarios.json`.
+- **Implemented:** each scenario includes `threat`, fixture payload, and `expected_control_behavior` for deterministic control checks.
+- **Demo-only:** fixtures are intended for local test/demo evaluation and not production enforcement proof.
+
+Related tests:
+- `integration-adapter/tests/test_output_leakage_scenarios.py`

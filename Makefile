@@ -1,4 +1,4 @@
-.PHONY: evidence evidence-demo evidence-step evidence-step-demo demo provenance-check adapter-validate adapter-smoke adapter-ci adapter-integrity adapter-retention adapter-retention-apply adapter-health
+.PHONY: evidence evidence-demo evidence-step evidence-step-demo demo provenance-check adapter-validate adapter-smoke adapter-ci adapter-integrity adapter-retention adapter-retention-apply adapter-health control-matrix evidence-summary launch-gate-bridge
 
 evidence:
 	cd integration-adapter && python -m integration_adapter.evidence_pipeline
@@ -46,3 +46,12 @@ adapter-retention-apply:
 
 adapter-health:
 	cd integration-adapter && python -m integration_adapter.health_report --format text
+
+control-matrix:
+	cd integration-adapter && python -m integration_adapter.control_matrix --output-doc ../docs/control-matrix.md
+
+evidence-summary:
+	cd integration-adapter && python -m integration_adapter.evidence_report --artifacts-root artifacts/logs --output-md ../docs/evidence-summary.md --output-json artifacts/logs/evidence-summary.json --output-html artifacts/logs/evidence-summary.html
+
+launch-gate-bridge:
+	cd integration-adapter && python -m integration_adapter.launch_gate_bridge --artifacts-root artifacts/logs --output-json ../docs/launch-gate-bridge.example.json --output-md ../docs/launch-gate-bridge.example.md
