@@ -1,16 +1,16 @@
-# Onyx -> Starter-Kit Mapping
+# Onyx -> Secure Starter Kit Mapping
 
 This document defines the additive mapping contract used by `integration-adapter/`.
 
 ## Goals
 
 - Keep Onyx as runtime execution plane.
-- Keep starter kit as governance/evidence/launch-gate plane.
+- Keep Secure Starter Kit as governance/evidence/Launch Gate plane.
 - Use artifact generation as the only integration boundary.
 
 ## Domain mapping
 
-| Onyx concept | Adapter translator | Starter-kit artifact target |
+| Onyx concept | Adapter translator | Secure Starter Kit artifact target |
 |---|---|---|
 | Connectors / indexed sources | `translate_connectors` | `artifacts/logs/connectors.inventory.json` |
 | Retrieval decisions | `translate_retrieval_events` | `artifacts/logs/audit.jsonl` (`retrieval.decision`) |
@@ -24,7 +24,7 @@ This document defines the additive mapping contract used by `integration-adapter
 
 ## Normalized event vocabulary
 
-The adapter emits event types aligned with starter-kit audit contracts:
+The adapter emits event types aligned with Secure Starter Kit audit contracts:
 
 - `request.start`
 - `policy.decision`

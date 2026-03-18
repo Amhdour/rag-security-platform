@@ -1,0 +1,11 @@
+{
+  "event_type": "policy.decision",
+  "control_name": "prompt_injection_guardrail",
+  "threat_type": "prompt_injection",
+  "stage": "input",
+  "decision": "deny",
+  "reason": "Detected instruction override pattern matching disallowed tool escalation instructions.",
+  "timestamp": "2026-03-18T10:15:30Z",
+  "request_id": "req-2f91f5f8",
+  "severity": "high"
+}

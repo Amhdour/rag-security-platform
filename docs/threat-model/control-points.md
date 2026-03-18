@@ -11,7 +11,7 @@
   - identity/authz provenance tagging.
 - Validation evidence:
   - adapter test suite,
-  - launch-gate schema validity checks.
+  - Launch Gate schema validity checks.
 - Status: **Implemented**.
 
 ## CP-02 — Artifact generation boundary
@@ -20,7 +20,7 @@
   - `integration-adapter/integration_adapter/pipeline.py`
   - `integration-adapter/integration_adapter/artifact_output.py`
 - What is enforced:
-  - deterministic output structure for audit/eval/launch-gate artifacts.
+  - deterministic output structure for audit/eval/Launch Gate artifacts.
 - Validation evidence:
   - generated artifact tree and CI smoke flows.
 - Status: **Implemented**.
@@ -51,11 +51,11 @@
 
 - Implementation modules:
   - `integration-adapter/integration_adapter/verify_artifact_integrity.py`
-  - launch-gate evaluator checks for integrity blockers
+  - Launch Gate evaluator checks for integrity blockers
 - What is enforced:
   - hash/signature mode verification and blocker-on-failure behavior.
 - Validation evidence:
-  - integrity verification command + launch-gate blocking policy docs.
+  - integrity verification command + Launch Gate blocking policy docs.
 - Status: **Implemented**.
 
 ## CP-06 — Deployment parity certainty

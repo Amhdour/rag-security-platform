@@ -7,7 +7,7 @@ This page separates what is demonstrated in this workspace from what remains con
 - **Implemented:** Adversarial evaluation harness with scenario loading, scoring (`pass` / `fail` / `warn`), JSONL + summary outputs, and markdown report generation in `integration-adapter/integration_adapter/adversarial_harness.py`.
 - **Implemented:** Reviewer control matrix generator in `integration-adapter/integration_adapter/control_matrix.py`.
 - **Implemented:** Conservative evidence summary generator (Markdown/JSON/optional HTML) in `integration-adapter/integration_adapter/evidence_report.py`.
-- **Implemented:** Launch-gate style verdict bridge based on generated artifacts in `integration-adapter/integration_adapter/launch_gate_bridge.py`.
+- **Implemented:** Launch Gate style verdict bridge based on generated artifacts in `integration-adapter/integration_adapter/launch_gate_bridge.py`.
 - **Implemented:** Scenario fixture packs for retrieval poisoning and output leakage under `integration-adapter/tests/fixtures/adversarial/`.
 
 ## Demonstrated in tests
@@ -17,7 +17,7 @@ This page separates what is demonstrated in this workspace from what remains con
 - **Implemented:** Output-leakage scenario expectations in `integration-adapter/tests/test_output_leakage_scenarios.py`.
 - **Implemented:** Control matrix generation coverage in `integration-adapter/tests/test_control_matrix.py`.
 - **Implemented:** Evidence report output coverage in `integration-adapter/tests/test_evidence_report.py`.
-- **Implemented:** Launch-gate bridge verdict/report coverage in `integration-adapter/tests/test_launch_gate_bridge.py`.
+- **Implemented:** Launch Gate bridge verdict/report coverage in `integration-adapter/tests/test_launch_gate_bridge.py`.
 
 ## Conceptual only
 

@@ -1,11 +1,11 @@
 # Integration Adapter
 
-**Implemented:** Additive adapter translating Onyx runtime concepts into starter-kit-compatible governance artifacts.
+**Implemented:** Additive adapter translating Onyx runtime concepts into Secure Starter Kit-compatible governance artifacts.
 
 ## Scope
 
 - **Implemented:** No Onyx core rewrites.
-- **Implemented:** No direct starter-kit policy/dashboard mutation paths.
+- **Implemented:** No direct Secure Starter Kit policy/dashboard mutation paths.
 - **Implemented:** Artifact files are the integration boundary.
 
 ## Implementation status (claims audit)
@@ -17,8 +17,8 @@
   - `run_launch_gate`
   - `demo_scenario`
 - **Implemented:** Schema validation for normalized events.
-- **Implemented:** Artifact writing for audit/replay/eval/launch-gate.
-- **Implemented:** Evidence-based launch-gate evaluator with fail-closed behavior on malformed/missing evidence.
+- **Implemented:** Artifact writing for audit/replay/eval/Launch Gate.
+- **Implemented:** Evidence-based Launch Gate evaluator with fail-closed behavior on malformed/missing evidence.
 
 ### Partially Implemented
 - **Partially Implemented:** Exporters support file-backed extraction and optional direct Onyx DB extraction where runtime imports/session are available.
@@ -64,7 +64,7 @@ Proven vs inferred guidance:
 - **Proven in artifacts:** a field value exists in the normalized artifact and indicates whether it was sourced/derived/unavailable.
 - **Inferred/Derived:** adapter inferred value from adjacent payload semantics (e.g., `resource_scope` from `source_id` or `tool_name`).
 - **Unconfirmed:** canonical runtime hook parity across deployment modes is not established by this workspace alone.
-- **Implemented:** See `../docs/identity-authz-evidence.md` for explicit proven vs inferred semantics and launch-gate authz provenance quality policy.
+- **Implemented:** See `../docs/identity-authz-evidence.md` for explicit proven vs inferred semantics and Launch Gate authz provenance quality policy.
 
 **Partially Implemented:** Best-effort Onyx concept mapping used by adapter:
 - **Partially Implemented:** `session_id` uses `session_id` or Onyx `chat_session_id` when present, else derives from `trace_id`.
@@ -89,13 +89,13 @@ For close-review claim hygiene across the workspace:
 ## Included modules
 
 - `integration_adapter/config.py` — adapter configuration / artifact root handling.
-- `integration_adapter/schemas.py` — normalized event and launch-gate schema models.
-- `integration_adapter/artifact_output.py` — writes audit, replay, eval, and launch-gate artifacts.
+- `integration_adapter/schemas.py` — normalized event and Launch Gate schema models.
+- `integration_adapter/artifact_output.py` — writes audit, replay, eval, and Launch Gate artifacts.
 - `integration_adapter/mappers.py` — runtime payload -> normalized schema mapping.
 - `integration_adapter/translators.py` — domain translators.
 - `integration_adapter/exporters.py` — read-only exporters from Onyx-facing sources.
 - `integration_adapter/raw_sources.py` — JSON/JSONL source readers and path discovery.
-- `integration_adapter/pipeline.py` — collection + artifact generation + launch-gate orchestration.
+- `integration_adapter/pipeline.py` — collection + artifact generation + Launch Gate orchestration.
 - `integration_adapter/collect_from_onyx.py` — CLI entrypoint.
 - `integration_adapter/generate_artifacts.py` — CLI entrypoint.
 - `integration_adapter/run_launch_gate.py` — CLI entrypoint.
@@ -104,7 +104,7 @@ For close-review claim hygiene across the workspace:
 - `integration_adapter/health_report.py` — operator-focused health summary CLI (json/text/metrics formats).
 - `integration_adapter/control_matrix.py` — auto-generates reviewer control matrix from adversarial scenario packs + default harness mappings.
 - `integration_adapter/evidence_report.py` — generates conservative evidence summary outputs (markdown/json/optional html) from artifacts and control mappings.
-- `integration_adapter/launch_gate_bridge.py` — bridges eval results into a launch-gate style verdict with conservative baseline comparison semantics.
+- `integration_adapter/launch_gate_bridge.py` — bridges eval results into a Launch Gate style verdict with conservative baseline comparison semantics.
 
 ## Threat model package
 
@@ -123,7 +123,7 @@ For close-review claim hygiene across the workspace:
 
 ## Schema versioning and compatibility
 
-- **Implemented:** Source, normalized, artifact bundle, and launch-gate schema versions are explicit and enforced.
+- **Implemented:** Source, normalized, artifact bundle, and Launch Gate schema versions are explicit and enforced.
 - **Implemented:** Compatibility policy outcomes are `allowed`, `warn_only`, and `blocked` with deterministic behavior.
 - **Implemented:** Artifact generation blocks on incompatible major-version contracts and warns on forward minor drift.
 - **Implemented:** See `../docs/schema-versioning.md` for policy and upgrade/downgrade guidance.
@@ -138,7 +138,7 @@ For close-review claim hygiene across the workspace:
 ## Adapter health telemetry
 
 - **Implemented:** Adapter emits `artifacts/logs/adapter_health/adapter_run_summary.json` for run-level observability.
-- **Implemented:** Health metrics include source modes, fallback count, parse failures, schema validation failures, artifact write failures, launch-gate failure reasons, stale evidence detections, and partial extraction warnings.
+- **Implemented:** Health metrics include source modes, fallback count, parse failures, schema validation failures, artifact write failures, Launch Gate failure reasons, stale evidence detections, and partial extraction warnings.
 - **Implemented:** Health run status is explicit: `success`, `degraded_success`, or `failed_run`.
 - **Implemented:** Operator summary CLI is available via `python -m integration_adapter.health_report --artifacts-root artifacts/logs --format text`.
 - **Implemented:** See `../docs/adapter-health.md` for details.
@@ -147,7 +147,7 @@ For close-review claim hygiene across the workspace:
 
 - **Implemented:** Adapter writes `artifact_integrity.manifest.json` with per-file SHA-256 and size metadata.
 - **Implemented:** Integrity modes: `hash_only` (default) and optional `signed_manifest` (HMAC-SHA256).
-- **Implemented:** Launch-gate fail-closes on missing/invalid integrity manifests, hash mismatches, and signed-manifest verification failures.
+- **Implemented:** Launch Gate fail-closes on missing/invalid integrity manifests, hash mismatches, and signed-manifest verification failures.
 - **Implemented:** Verify hash-only mode with `python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs`.
 - **Implemented:** Verify signed mode with `python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs --integrity-mode signed_manifest --signing-key-path /secure/path/signing.key`.
 - **Unconfirmed:** no cryptographic non-repudiation/signature chain is implemented in this workspace.
@@ -163,7 +163,7 @@ Safety behavior:
 - **Implemented:** destructive deletion requires `--apply`.
 - **Implemented:** required baseline artifacts are preserved.
 - **Implemented:** files referenced by `artifact_integrity.manifest.json` are preserved.
-- **Implemented:** latest successful launch-gate run(s) are preserved with `--keep-latest-successful-runs` (default `1`).
+- **Implemented:** latest successful Launch Gate run(s) are preserved with `--keep-latest-successful-runs` (default `1`).
 
 See `../docs/artifact-retention-policy.md` for family windows, profile defaults, and environment overrides.
 
@@ -173,9 +173,9 @@ See `../docs/artifact-retention-policy.md` for family windows, profile defaults,
 - **Unconfirmed:** canonical runtime hook not validated in this workspace.
 - **Planned:** stronger anti-tamper guarantees via signed artifact attestations.
 
-## Launch-gate policy
+## Launch Gate policy
 
-- **Implemented:** Launch-gate evaluates evidence quality (not only presence) including freshness, compatibility, source quality, exporter degradation, identity/authz fields, and threat-control mapping completeness.
+- **Implemented:** Launch Gate evaluates evidence quality (not only presence) including freshness, compatibility, source quality, exporter degradation, identity/authz fields, and threat-control mapping completeness.
 - **Implemented:** Critical stale/missing evidence fails closed; non-critical degradation is surfaced as warnings.
 - **Implemented:** See `../docs/launch-gate-policy.md` for thresholds and PASS/WARN/FAIL policy.
 
@@ -232,12 +232,12 @@ python -m integration_adapter.validate_config --strict-sources
 | Goal | Command | Success signal | Failure signal |
 |---|---|---|---|
 | Validate config/profile | `python -m integration_adapter.validate_config --profile dev` | JSON `"status": "pass"` | non-zero exit + `config validation failed` |
-| Generate artifacts | `python -m integration_adapter.generate_artifacts --demo --profile demo --artifacts-root artifacts/logs` | prints contract/audit/launch-gate/integrity paths | non-zero exit + `artifact generation failed` |
+| Generate artifacts | `python -m integration_adapter.generate_artifacts --demo --profile demo --artifacts-root artifacts/logs` | prints contract/audit/Launch Gate/integrity paths | non-zero exit + `artifact generation failed` |
 | Verify integrity | `python -m integration_adapter.verify_artifact_integrity --artifacts-root artifacts/logs` | JSON `"ok": true` | non-zero exit + missing/hash mismatch details |
 | Retention dry-run | `python -m integration_adapter.artifact_retention --dry-run --profile ci --artifacts-root artifacts/logs` | JSON candidate list, `deleted_count: 0` | non-zero exit for invalid profile/args |
 | Retention apply | `python -m integration_adapter.artifact_retention --apply --profile ci --artifacts-root artifacts/logs` | JSON `deleted_count >= 0` + explicit completion message | non-zero exit for invalid profile/args |
 | Health summary | `python -m integration_adapter.health_report --artifacts-root artifacts/logs --format text` | concise run status + counters + integrity/gate/retention summary | non-zero exit for invalid args |
-| Evaluate gate | `python -m integration_adapter.run_launch_gate --profile demo --artifacts-root artifacts/logs` | launch-gate JSON path printed | non-zero exit + `launch gate failed` |
+| Evaluate gate | `python -m integration_adapter.run_launch_gate --profile demo --artifacts-root artifacts/logs` | Launch Gate JSON path printed | non-zero exit + `launch gate failed` |
 
 Profile behavior summary:
 - **Implemented:** `demo` allows synthetic/fixture fallback for reproducible demos.
@@ -365,7 +365,7 @@ Environment overrides:
 - `INTEGRATION_ADAPTER_ONYX_EVALS_JSON`
 - `INTEGRATION_ADAPTER_ONYX_RUNTIME_EVENTS_JSONL`
 
-## Launch-gate criteria (evidence-based)
+## Launch Gate criteria (evidence-based)
 
 `python -m integration_adapter.run_launch_gate` checks:
 1. **Implemented:** connector inventory presence
@@ -499,9 +499,9 @@ python -m integration_adapter.evidence_report \
 ```
 
 
-## Launch-gate bridge verdict workflow
+## Launch Gate bridge verdict workflow
 
-- **Implemented:** Produces a launch-gate style verdict from current evaluation artifacts and control mappings.
+- **Implemented:** Produces a Launch Gate style verdict from current evaluation artifacts and control mappings.
 - **Implemented:** Verdict explicitly reports core control presence, adversarial-test posture, remaining risks, and relative baseline-safety signal.
 - **Partially Implemented:** Baseline safety conclusion is artifact-relative and not a production runtime enforcement proof.
 - **Unconfirmed:** canonical runtime hook not validated in this workspace.

@@ -252,7 +252,7 @@ class LaunchGateEvaluator:
                 "details": "Control enforcement is not proven by artifact-only checks in this workspace.",
             },
             "limitations": [
-                "This launch-gate evaluates artifact quality/freshness/completeness only.",
+                "This Launch Gate evaluates artifact quality/freshness/completeness only.",
                 "It does not by itself prove runtime policy/tool enforcement in production.",
             ],
         }
@@ -262,7 +262,7 @@ class LaunchGateEvaluator:
 
         md_path = launch_dir / f"security-readiness-{stamp}.md"
         md_lines = [
-            "# Integration Adapter Launch-Gate Summary",
+            "# Integration Adapter Launch Gate Summary",
             "",
             f"- generated_at: {payload['generated_at']}",
             f"- status: **{evaluation.status}**",

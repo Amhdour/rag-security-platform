@@ -1,0 +1,4 @@
+Placeholder: no synthetic test output is stored in this file.
+Use real test execution outputs instead, e.g.:
+- cd integration-adapter && python -m pytest -q
+- make adapter-ci

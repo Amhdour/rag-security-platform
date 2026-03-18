@@ -33,7 +33,7 @@ python -m integration_adapter.artifact_retention --apply
   - `evals.inventory.json`
   - `adapter_health/adapter_run_summary.json`
 - **Implemented:** Files referenced by the current integrity manifest are preserved.
-- **Implemented:** The latest successful launch-gate run(s) are preserved (`status in {go, conditional_go}`), configurable via `--keep-latest-successful-runs`.
+- **Implemented:** The latest successful Launch Gate run(s) are preserved (`status in {go, conditional_go}`), configurable via `--keep-latest-successful-runs`.
 - **Implemented:** Cleanup does not run automatically during artifact generation; operators run cleanup after validation and verification steps.
 
 ## Profile-aware retention windows
@@ -44,7 +44,7 @@ Retention windows are profile defaults and can be overridden by environment vari
 |---|---:|---:|---:|---:|
 | audit logs | 2 days | 7 days | 1 day | 30 days |
 | eval outputs (`evals/*.jsonl`, `evals/*.summary.json`) | 3 days | 14 days | 2 days | 30 days |
-| launch-gate outputs (`launch_gate/security-readiness-*`) | 3 days | 14 days | 2 days | 90 days |
+| Launch Gate outputs (`launch_gate/security-readiness-*`) | 3 days | 14 days | 2 days | 90 days |
 | adapter health summaries (`adapter_health/*.json`) | 3 days | 14 days | 2 days | 30 days |
 | integrity manifests (`artifact_integrity*.json`) | 3 days | 14 days | 2 days | 30 days |
 
@@ -97,5 +97,5 @@ Apply example:
 
 ## Limitations
 
-- **Partially Implemented:** Retention currently operates on file age and launch-gate status, not immutable run IDs across all artifact families.
+- **Partially Implemented:** Retention currently operates on file age and Launch Gate status, not immutable run IDs across all artifact families.
 - **Unconfirmed:** canonical runtime hook not validated in this workspace.

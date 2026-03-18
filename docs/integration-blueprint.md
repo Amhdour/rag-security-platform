@@ -1,10 +1,10 @@
-# Onyx + AI Trust Starter Kit Integration Blueprint
+# Onyx + AI Trust & Security Readiness Integration Blueprint
 
 ## Scope and constraints
 
 This blueprint defines a non-invasive integration where:
 - **Implemented:** **Onyx** remains runtime execution plane.
-- **Implemented:** **Starter Kit** remains governance/evidence/launch-gate plane.
+- **Implemented:** **Secure Starter Kit** remains governance/evidence/Launch Gate plane.
 - **Implemented:** **integration-adapter** remains additive translation plane.
 
 Assumptions not fully verifiable from current workspace are explicitly labeled as **Unconfirmed**.
@@ -31,7 +31,7 @@ Assumptions not fully verifiable from current workspace are explicitly labeled a
 **Partially Implemented (for this integration workspace):**
 - adapter can optionally read some Onyx DB paths if runtime env is available.
 
-### Starter Kit (`myStarterKit-maindashb-main`)
+### Secure Starter Kit (`myStarterKit-maindashb-main`)
 
 **Implemented (observed structure):**
 - `app/`, `policies/`, `telemetry/audit/`, `launch_gate/`, `observability/`, `evals/`
@@ -42,9 +42,9 @@ Assumptions not fully verifiable from current workspace are explicitly labeled a
 **Implemented:**
 - schema/mapping pipeline
 - artifact generation commands
-- launch-gate evaluator
+- Launch Gate evaluator
 - demo scenario
-- tests for parser/generation/launch-gate/dashboard compatibility
+- tests for parser/generation/Launch Gate/dashboard compatibility
 
 **Demo-only:**
 - synthetic fallback payloads in demo paths.
@@ -80,7 +80,7 @@ Overlapping concern domains:
 
 1. **Implemented:** Zone A — Runtime (Onyx)
 2. **Implemented:** Zone B — Adapter (read/transform/export)
-3. **Implemented:** Zone C — Governance (Starter Kit read-only consumption)
+3. **Implemented:** Zone C — Governance (Secure Starter Kit read-only consumption)
 
 **Implemented (design intent):** Expected flow is **A -> B -> C**.
 

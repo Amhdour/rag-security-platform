@@ -1,6 +1,6 @@
 # Schema Versioning Policy
 
-This document defines adapter contract versioning across source ingestion, normalization, artifact bundle output, and launch-gate output.
+This document defines adapter contract versioning across source ingestion, normalization, artifact bundle output, and Launch Gate output.
 
 ## Versioned contracts
 
@@ -9,7 +9,7 @@ This document defines adapter contract versioning across source ingestion, norma
 - Raw source schema version: `source_schema_version`
 - Normalized adapter schema version: `normalized_schema_version`
 - Artifact bundle contract version: `artifact_bundle_schema_version`
-- Launch-gate output schema version: `launch_gate_schema_version`
+- Launch Gate output schema version: `launch_gate_schema_version`
 
 Current versions are `1.0` for all contracts.
 
@@ -29,7 +29,7 @@ Policy outcomes are deterministic and test-backed:
 
 This policy distinguishes schema incompatibility from missing-data tolerance:
 
-- schema incompatibility (`blocked`) fails generation or launch-gate contract checks,
+- schema incompatibility (`blocked`) fails generation or Launch Gate contract checks,
 - missing-data tolerance remains handled by existing artifact/evidence checks.
 
 ## Enforcement points
@@ -44,7 +44,7 @@ This policy distinguishes schema incompatibility from missing-data tolerance:
    - `artifact_bundle.contract.json` stores version contracts,
    - audit/eval/replay/inventory artifacts are stamped with version metadata.
 
-3. **Launch-gate validation**
+3. **Launch Gate validation**
    - validates `artifact_bundle.contract.json` against expected versions,
    - blocks on incompatible major versions,
    - emits warn residual risk on forward minor drift.
@@ -96,4 +96,4 @@ Expected behavior:
 
 Failure conditions:
 - **Implemented:** blocked compatibility decisions stop artifact generation before normal completion.
-- **Implemented:** launch-gate `artifact_contract_versions` fails on incompatible contract artifacts.
+- **Implemented:** Launch Gate `artifact_contract_versions` fails on incompatible contract artifacts.

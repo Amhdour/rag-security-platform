@@ -1,4 +1,4 @@
-"""Integration adapter package for Onyx -> starter-kit artifact translation."""
+"""Integration adapter package for Onyx -> Secure Starter Kit artifact translation."""
 
 from integration_adapter.config import AdapterConfig
 from integration_adapter.exporters import (

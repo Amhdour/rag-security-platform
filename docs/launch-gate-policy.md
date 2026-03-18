@@ -1,12 +1,12 @@
-# Launch-Gate Evidence Quality Policy
+# Launch Gate Evidence Quality Policy
 
-This policy defines adapter launch-gate decisions based on evidence quality, freshness, compatibility, and degradation signals.
+This policy defines adapter Launch Gate decisions based on evidence quality, freshness, compatibility, and degradation signals.
 
 ## Scope and limitations
 
-- **Implemented:** Launch-gate evaluates artifacts and telemetry quality for integration readiness.
-- **Implemented:** Launch-gate emits machine-readable and human-readable results.
-- **Unconfirmed:** Launch-gate does not prove production runtime control enforcement.
+- **Implemented:** Launch Gate evaluates artifacts and telemetry quality for integration readiness.
+- **Implemented:** Launch Gate emits machine-readable and human-readable results.
+- **Unconfirmed:** Launch Gate does not prove production runtime control enforcement.
 
 ## PASS / WARN / FAIL model
 
@@ -74,21 +74,21 @@ Both include blockers and residual risks with explicit reasons.
 
 ## Identity/authz provenance quality
 
-- **Implemented:** Launch-gate includes `identity_authz_provenance_quality` to evaluate per-field provenance quality (`sourced`, `derived`, `unavailable`).
+- **Implemented:** Launch Gate includes `identity_authz_provenance_quality` to evaluate per-field provenance quality (`sourced`, `derived`, `unavailable`).
 - **Implemented:** Critical provenance fields (`actor_id`, `tenant_id`, `session_id`, `decision_basis`, `resource_scope`, `authz_result`) failing availability thresholds produce FAIL.
 - **Implemented:** Derived-only critical evidence is warning-level unless critical-unavailable thresholds are exceeded.
 
 
 ## Evidence tampering signal checks
 
-- **Implemented:** Launch-gate includes `evidence_tampering_signals` consistency checks between `artifact_bundle.contract.json` and `audit.jsonl` schema-version stamps.
+- **Implemented:** Launch Gate includes `evidence_tampering_signals` consistency checks between `artifact_bundle.contract.json` and `audit.jsonl` schema-version stamps.
 - **Implemented:** Contract/audit mismatch is fail-closed.
 - **Unconfirmed:** no cryptographic signing/attestation is implemented in this workspace.
 
 
 ## Artifact integrity manifest checks
 
-- **Implemented:** Launch-gate includes `artifact_integrity_manifest` and fail-closes on missing required files, missing manifest entries, or hash mismatches.
+- **Implemented:** Launch Gate includes `artifact_integrity_manifest` and fail-closes on missing required files, missing manifest entries, or hash mismatches.
 - **Implemented:** Hash verification is SHA-256 consistency checking against `artifact_integrity.manifest.json`.
 - **Unconfirmed:** this is not cryptographic non-repudiation or signed attestation.
 

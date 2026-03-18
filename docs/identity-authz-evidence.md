@@ -30,9 +30,9 @@ The normalized runtime event schema includes:
 
 **Implemented:** The adapter does not invent positive identity claims; missing identity fields remain `unavailable` and are marked `unavailable`.
 
-## Launch-gate minimum quality checks
+## Launch Gate minimum quality checks
 
-**Implemented:** Launch-gate evaluates:
+**Implemented:** Launch Gate evaluates:
 1. `identity_authz_evidence_presence`
 2. `identity_authz_provenance_quality`
 

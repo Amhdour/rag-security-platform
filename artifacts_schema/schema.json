@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rag-security-platform.local/artifacts_schema/schema.json",
+  "title": "Shared Security Evidence Artifact",
+  "description": "Common evidence artifact schema for evaluation, dashboard, and website consumption.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "control_name",
+    "threat_type",
+    "stage",
+    "decision",
+    "reason",
+    "timestamp",
+    "request_id",
+    "severity"
+  ],
+  "properties": {
+    "control_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name of the control that produced or informed the evidence decision."
+    },
+    "threat_type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Threat category tied to the evidence event (for example prompt_injection or data_exfiltration)."
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "input",
+        "retrieval",
+        "context",
+        "model",
+        "tool",
+        "output",
+        "logging"
+      ],
+      "description": "Pipeline stage where the evidence event was evaluated."
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "deny",
+        "warn"
+      ],
+      "description": "Security decision outcome."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable reason explaining the decision."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when the decision evidence was recorded."
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Traceable request identifier used for cross-plane correlation."
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Severity associated with the evidence decision."
+    },
+    "event_type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Normalized event classification for dashboard ingestion."
+    }
+  }
+}

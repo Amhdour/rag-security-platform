@@ -252,7 +252,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Apply artifact retention and cleanup policy")
     parser.add_argument("--artifacts-root", default="artifacts/logs", help="artifact root containing generated adapter artifacts")
     parser.add_argument("--profile", default=os.environ.get("INTEGRATION_ADAPTER_PROFILE", "dev"), choices=["demo", "dev", "ci", "prod_like"], help="retention profile")
-    parser.add_argument("--keep-latest-successful-runs", type=int, default=1, help="number of successful launch-gate runs to preserve")
+    parser.add_argument("--keep-latest-successful-runs", type=int, default=1, help="number of successful Launch Gate runs to preserve")
     parser.add_argument("--dry-run", action="store_true", help="report expirations without deleting files")
     parser.add_argument("--apply", action="store_true", help="delete expired files (destructive)")
     args = parser.parse_args()

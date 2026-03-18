@@ -22,7 +22,7 @@ flowchart LR
     subgraph Gov[Governance Plane: myStarterKit-maindashb-main]
         MAT[Control Matrix]
         EVR[Evidence Report]
-        LGB[Launch-Gate Bridge Verdict]
+        LGB[Launch Gate Bridge Verdict]
         REV[Reviewer / Audit Consumer]
     end
 

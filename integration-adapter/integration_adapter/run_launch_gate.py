@@ -11,7 +11,7 @@ from integration_adapter.pipeline import run_launch_gate
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run launch-gate evaluation for generated artifacts")
+    parser = argparse.ArgumentParser(description="Run Launch Gate evaluation for generated artifacts")
     parser.add_argument("--artifacts-root", default=None, help="override artifacts root for this run")
     parser.add_argument("--profile", default=None, choices=["demo", "dev", "ci", "prod_like"], help="execution profile override")
     args = parser.parse_args()

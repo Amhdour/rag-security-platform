@@ -18,7 +18,7 @@ This workspace uses integrity metadata to improve evidence bundle reviewability.
   - manifest generation timestamp
   - integrity manifest schema version
   - integrity mode metadata
-- **Implemented:** Launch-gate includes `artifact_integrity_manifest` fail-closed validation.
+- **Implemented:** Launch Gate includes `artifact_integrity_manifest` fail-closed validation.
 
 ## Optional signed manifest configuration
 

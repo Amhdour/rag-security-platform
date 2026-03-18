@@ -12,7 +12,7 @@ flowchart TD
     C2[Control: poisoned retrieval scenarios + deny expectations]
     C3[Control: unsafe output scenarios + redact/deny expectations]
     C4[Control: tool decision normalization + gated high-risk usage]
-    C5[Control: integrity verification + launch-gate blockers]
+    C5[Control: integrity verification + Launch Gate blockers]
 
     E1[Evidence: evals/adversarial-results.jsonl]
     E2[Evidence: evals/adversarial-summary.json]

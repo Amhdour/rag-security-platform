@@ -31,7 +31,7 @@
 
 Unconfirmed: canonical runtime hook not validated in this workspace.
 
-### 2) Starter Kit governance plane (`myStarterKit-maindashb-main/`)
+### 2) Secure Starter Kit governance plane (`myStarterKit-maindashb-main/`)
 
 - **Partially Implemented:** Local snapshot identity is recorded and linked to this plane.
 - **Unconfirmed:** Canonical upstream remote URL, branch/tag, and pinned commit are unavailable in this workspace.
@@ -47,7 +47,7 @@ Unconfirmed: canonical runtime hook not validated in this workspace.
 
 Because nested metadata is missing, this workspace cannot truthfully resolve:
 
-- upstream remote URL (for Starter Kit),
+- upstream remote URL (for Secure Starter Kit),
 - active branch/tag,
 - exact upstream commit hash.
 

@@ -7,17 +7,17 @@
 - **Implemented controls:**
   - schema validation and malformed input handling,
   - explicit source-mode and fallback metadata,
-  - launch-gate fail-closed checks for required/critical evidence.
+  - Launch Gate fail-closed checks for required/critical evidence.
 - **Unconfirmed:** canonical runtime hook not validated in this workspace.
 
 ## Boundary B2: Adapter processing -> Artifact store
 
-- Normalized data is materialized as audit/eval/launch-gate artifacts.
+- Normalized data is materialized as audit/eval/Launch Gate artifacts.
 - Risks: tampering, partial writes, stale evidence.
 - **Implemented controls:**
   - deterministic artifact writers,
   - artifact integrity manifest (hashes/sizes; optional signed mode),
-  - freshness and completeness checks in launch-gate.
+  - freshness and completeness checks in Launch Gate.
 
 ## Boundary B3: Artifact store -> Governance consumption
 
